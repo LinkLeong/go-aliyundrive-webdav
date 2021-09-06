@@ -3,6 +3,7 @@ package aliyun
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tidwall/gjson"
 	"go-aliyun/aliyun/cache"
 	"go-aliyun/aliyun/model"
 	"go-aliyun/aliyun/net"
@@ -74,4 +75,41 @@ func RefreshToken(refreshToken string) model.RefreshTokenModel {
 	}
 	return refresh
 
+}
+
+func RemoveTrash(token string, driveId string, fileId string) bool {
+	rs := net.Post(model.APIREMOVETRASH, token, []byte(`{"drive_id":"`+driveId+`","file_id":"`+fileId+`"}`))
+	if len(rs) == 0 {
+		return true
+	}
+	return false
+}
+
+func ReName(token string, driveId string, newName string, fileId string) bool {
+	rs := net.Post(model.APIFILEUPDATE, token, []byte(`{"drive_id":"`+driveId+`","file_id":"`+fileId+`","name":"`+newName+`","check_name_mode":"refuse"}`))
+	var m model.ListModel
+	e := json.Unmarshal(rs, &m)
+	if e != nil {
+		fmt.Println(e)
+	}
+	cache.GoCache.Delete(m.ParentFileId)
+	fmt.Println(rs)
+	return true
+}
+func MakeDir(token string, driveId string, name string, parentFileId string) bool {
+	rs := net.Post(model.APIMKDIR, token, []byte(`{"drive_id":"`+driveId+`","parent_file_id":"`+parentFileId+`","name":"`+name+`","check_name_mode":"refuse","type":"folder"}`))
+	//正确返回示例
+	//{
+	//	"parent_file_id": "root",
+	//	"type": "folder",
+	//	"file_id": "6134d1b4253b74c8f7e24d72afa20f58fd19ac28",
+	//	"domain_id": "bj29",
+	//	"drive_id": "1662258",
+	//	"file_name": "新0000",
+	//	"encrypt_mode": "none"
+	//}
+	if gjson.GetBytes(rs, "file_name").Str == name {
+		cache.GoCache.Delete(parentFileId)
+	}
+	return true
 }

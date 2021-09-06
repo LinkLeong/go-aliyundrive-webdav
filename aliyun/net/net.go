@@ -9,8 +9,7 @@ import (
 
 func Post(url, token string, data []byte) []byte {
 	method := "POST"
-	client := &http.Client{
-	}
+	client := &http.Client{}
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
 
 	if err != nil {
@@ -42,8 +41,7 @@ func Get(url, token string) []byte {
 
 	method := "GET"
 
-	client := &http.Client{
-	}
+	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
 
 	if err != nil {

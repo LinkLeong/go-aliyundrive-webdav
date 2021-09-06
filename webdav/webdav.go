@@ -201,14 +201,18 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	var fi model.ListModel
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+		strArr := strings.Split(reqPath, "/")
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		for _, i := range list.Items {
-			if i.Name == reqPath {
-				fi = i
-				data = aliyun.GetFile(i.Url, h.Config.Token)
-				break
-			}
-		}
+		fi, err := findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+		fmt.Println(err)
+		data = aliyun.GetFile(fi.Url, h.Config.Token)
+		//for _, i := range list.Items {
+		//	if i.Name == reqPath {
+		//		fi = i
+		//		data = aliyun.GetFile(i.Url, h.Config.Token)
+		//		break
+		//	}
+		//}
 	}
 
 	if err != nil {
@@ -243,28 +247,47 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) (status i
 	if err != nil {
 		return status, err
 	}
-	release, status, err := h.confirmLocks(r, reqPath, "")
-	if err != nil {
-		return status, err
-	}
-	defer release()
 
-	ctx := r.Context()
+	var fi model.ListModel
+	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+		strArr := strings.Split(reqPath, "/")
+		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 
-	// TODO: return MultiStatus where appropriate.
+		//for _, i := range list.Items {
+		//	if i.Name == reqPath {
+		//		fi = i
+		//		data = aliyun.GetFile(i.Url, h.Config.Token)
+		//		break
+		//	}
+		//}
+	}
 
-	// "godoc os RemoveAll" says that "If the path does not exist, RemoveAll
-	// returns nil (no error)." WebDAV semantics are that it should return a
-	// "404 Not Found". We therefore have to Stat before we RemoveAll.
-	if _, err := h.FileSystem.Stat(ctx, reqPath); err != nil {
-		if os.IsNotExist(err) {
-			return http.StatusNotFound, err
-		}
-		return http.StatusMethodNotAllowed, err
-	}
-	if err := h.FileSystem.RemoveAll(ctx, reqPath); err != nil {
-		return http.StatusMethodNotAllowed, err
-	}
+	//release, status, err := h.confirmLocks(r, reqPath, "")
+	//if err != nil {
+	//	return status, err
+	//}
+	//defer release()
+
+	//ctx := r.Context()
+	//
+	//// TODO: return MultiStatus where appropriate.
+	//
+	//// "godoc os RemoveAll" says that "If the path does not exist, RemoveAll
+	//// returns nil (no error)." WebDAV semantics are that it should return a
+	//// "404 Not Found". We therefore have to Stat before we RemoveAll.
+	//if _, err := h.FileSystem.Stat(ctx, reqPath); err != nil {
+	//	if os.IsNotExist(err) {
+	//		return http.StatusNotFound, err
+	//	}
+	//	return http.StatusMethodNotAllowed, err
+	//}
+	////if err := h.FileSystem.RemoveAll(ctx, reqPath); err != nil {
+	////	return http.StatusMethodNotAllowed, err
+	////}
+
+	aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fi.FileId)
+
 	return http.StatusNoContent, nil
 }
 
@@ -312,32 +335,42 @@ func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status in
 	if err != nil {
 		return status, err
 	}
-	release, status, err := h.confirmLocks(r, reqPath, "")
-	if err != nil {
-		return status, err
-	}
-	defer release()
-
-	ctx := r.Context()
 
 	if r.ContentLength > 0 {
 		return http.StatusUnsupportedMediaType, nil
 	}
-	if err := h.FileSystem.Mkdir(ctx, reqPath, 0777); err != nil {
-		if os.IsNotExist(err) {
-			return http.StatusConflict, err
+
+	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
+		parentFileId := "root"
+		var name string = reqPath[0 : len(reqPath)-1]
+		var fi model.ListModel
+		index := strings.LastIndex(reqPath[0:len(reqPath)-1], "/")
+		if index > -1 {
+			strArr := strings.Split(reqPath[0:index+1], "/")
+			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+			parentFileId = fi.FileId
+			name = reqPath[index:]
 		}
-		return http.StatusMethodNotAllowed, err
+		aliyun.MakeDir(h.Config.Token, h.Config.DriveId, name, parentFileId)
 	}
+	//if err := h.FileSystem.Mkdir(ctx, reqPath, 0777); err != nil {
+	//	if os.IsNotExist(err) {
+	//		return http.StatusConflict, err
+	//	}
+	//	return http.StatusMethodNotAllowed, err
+	//}
 	return http.StatusCreated, nil
 }
 
 func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status int, err error) {
 	hdr := r.Header.Get("Destination")
+	fmt.Println(hdr)
 	if hdr == "" {
 		return http.StatusBadRequest, errInvalidDestination
 	}
 	u, err := url.Parse(hdr)
+	fmt.Println(u)
 	if err != nil {
 		return http.StatusBadRequest, errInvalidDestination
 	}
@@ -358,8 +391,33 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 	if dst == "" {
 		return http.StatusBadGateway, errInvalidDestination
 	}
-	if dst == src {
-		return http.StatusForbidden, errDestinationEqualsSource
+
+	srcIndex := strings.LastIndex(src, "/")
+	dstIndex := strings.LastIndex(dst, "/")
+	rename := false
+	if srcIndex == -1 && srcIndex == dstIndex {
+		rename = true
+	} else {
+		if srcIndex == dstIndex {
+			srcPrefix := src[:srcIndex+1]
+			dstPrefix := dst[:dstIndex+1]
+			if srcPrefix == dstPrefix {
+				rename = true
+			}
+		}
+	}
+
+	if rename {
+		var fi model.ListModel
+		strArr := strings.Split(src, "/")
+		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+
+		if dstIndex == -1 {
+			dstIndex = 0
+		}
+		aliyun.ReName(h.Config.Token, h.Config.DriveId, dst[dstIndex:], fi.FileId)
+		return http.StatusNoContent, nil
 	}
 
 	ctx := r.Context()
@@ -390,11 +448,11 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 		return copyFiles(ctx, h.FileSystem, src, dst, r.Header.Get("Overwrite") != "F", depth, 0)
 	}
 
-	release, status, err := h.confirmLocks(r, src, dst)
-	if err != nil {
-		return status, err
-	}
-	defer release()
+	//release, status, err := h.confirmLocks(r, src, dst)
+	//if err != nil {
+	//	return status, err
+	//}
+	//defer release()
 
 	// Section 9.9.2 says that "The MOVE method on a collection must act as if
 	// a "Depth: infinity" header was used on it. A client must not submit a
@@ -527,12 +585,15 @@ func (h *Handler) handleUnlock(w http.ResponseWriter, r *http.Request) (status i
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status int, err error) {
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	var list model.FileListModel
+	var fi model.ListModel
 	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
 		dirName := strings.TrimRight(reqPath, "/")
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		for _, i := range list.Items {
 			if i.Name == dirName {
+				fi = i
 				list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, i.FileId)
+				break
 			}
 		}
 
@@ -565,10 +626,6 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		return status, err
 	}
 
-	if strings.Count(r.URL.Path, "/") > 2 {
-		return 200, nil
-	}
-
 	mw := multistatusWriter{w: w}
 
 	for _, v := range list.Items {
@@ -599,6 +656,35 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		}
 		mw.write(makePropstatResponse(href, pstats))
 	}
+
+	if len(list.Items) == 0 {
+		var pstats []Propstat
+		if pf.Propname != nil {
+			pnames, err := propnames(fi)
+			if err != nil {
+				fmt.Println(err)
+			}
+			pstat := Propstat{Status: http.StatusOK}
+			for _, xmlname := range pnames {
+				pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
+			}
+			pstats = append(pstats, pstat)
+		} else if pf.Allprop != nil {
+			pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
+		} else {
+			pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
+		}
+		if err != nil {
+			fmt.Println(err)
+
+		}
+		href := path.Join(h.Prefix, fi.Name)
+		if href != "/" && fi.Type == "folder" {
+			href += "/"
+		}
+		mw.write(makePropstatResponse(href, pstats))
+	}
+
 	//if err != nil {
 	//	return err
 	//}
@@ -682,6 +768,22 @@ func (h *Handler) handleProppatch(w http.ResponseWriter, r *http.Request) (statu
 		return http.StatusInternalServerError, closeErr
 	}
 	return 0, nil
+}
+
+func findUrl(strArr []string, token, driveId string, list model.FileListModel) (model.ListModel, error) {
+	var m model.ListModel
+	for _, v := range list.Items {
+		if v.Name == strArr[0] {
+			m = v
+			if len(strArr) > 1 {
+				list, _ := aliyun.GetList(token, driveId, v.FileId)
+				return findUrl(strArr[1:], token, driveId, list)
+			} else {
+				return m, nil
+			}
+		}
+	}
+	return m, nil
 }
 
 func makePropstatResponse(href string, pstats []Propstat) *response {

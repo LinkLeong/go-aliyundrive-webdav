@@ -609,7 +609,7 @@ func (f *memFile) Write(p []byte) (int, error) {
 // See section 9.9.4 for when various HTTP status codes apply.
 func moveFiles(ctx context.Context, fs FileSystem, src, dst string, overwrite bool) (status int, err error) {
 	created := false
-	if _, err := fs.Stat(ctx, dst); err != nil {
+	if _, err := fs.Stat(ctx, dst); err != nil && false {
 		if !os.IsNotExist(err) {
 			return http.StatusForbidden, err
 		}
