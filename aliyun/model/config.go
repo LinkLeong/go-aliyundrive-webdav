@@ -7,6 +7,7 @@ const (
 	APIREMOVETRASH     = APIBASE + "/v2/recyclebin/trash" //移动到垃圾箱
 	APIFILEUPDATE      = APIBASE + "/v3/file/update"
 	APIMKDIR           = APIBASE + "/adrive/v2/file/createWithFolders"
+	APIFILEDETAIL      = APIBASE + "/v2/file/get"
 )
 
 type Config struct {

@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -51,6 +52,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status, err = http.StatusInternalServerError, errNoLockSystem
 	} else {
 		fmt.Println(r.Method)
+		fmt.Println(r.URL)
 		switch r.Method {
 		case "OPTIONS":
 			status, err = h.handleOptions(w, r)
@@ -204,8 +206,8 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		strArr := strings.Split(reqPath, "/")
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		fi, err := findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-		fmt.Println(err)
-		data = aliyun.GetFile(fi.Url, h.Config.Token)
+		fmt.Println("dddd", err)
+		data = aliyun.GetFile(fi.Thumbnail, h.Config.Token)
 		//for _, i := range list.Items {
 		//	if i.Name == reqPath {
 		//		fi = i
@@ -286,7 +288,7 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) (status i
 	////	return http.StatusMethodNotAllowed, err
 	////}
 
-	aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fi.FileId)
+	aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fi.FileId, fi.ParentFileId)
 
 	return http.StatusNoContent, nil
 }
@@ -332,6 +334,9 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 
 func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status int, err error) {
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
+	if strings.HasSuffix(reqPath, "/") {
+		reqPath = reqPath[:len(reqPath)-1]
+	}
 	if err != nil {
 		return status, err
 	}
@@ -340,17 +345,17 @@ func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status in
 		return http.StatusUnsupportedMediaType, nil
 	}
 
-	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
+	if len(reqPath) > 0 {
 		parentFileId := "root"
-		var name string = reqPath[0 : len(reqPath)-1]
+		var name string = reqPath
 		var fi model.ListModel
-		index := strings.LastIndex(reqPath[0:len(reqPath)-1], "/")
+		index := strings.LastIndex(reqPath[0:len(reqPath)], "/")
 		if index > -1 {
-			strArr := strings.Split(reqPath[0:index+1], "/")
+			strArr := strings.Split(reqPath[0:index], "/")
 			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 			parentFileId = fi.FileId
-			name = reqPath[index:]
+			name = reqPath[index+1:]
 		}
 		aliyun.MakeDir(h.Config.Token, h.Config.DriveId, name, parentFileId)
 	}
@@ -365,12 +370,10 @@ func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status in
 
 func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status int, err error) {
 	hdr := r.Header.Get("Destination")
-	fmt.Println(hdr)
 	if hdr == "" {
 		return http.StatusBadRequest, errInvalidDestination
 	}
 	u, err := url.Parse(hdr)
-	fmt.Println(u)
 	if err != nil {
 		return http.StatusBadRequest, errInvalidDestination
 	}
@@ -393,7 +396,13 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 	}
 
 	srcIndex := strings.LastIndex(src, "/")
-	dstIndex := strings.LastIndex(dst, "/")
+	dstIndex := -1
+	if runtime.GOOS == "darwin" {
+		dstIndex = len(dst)
+	} else {
+		dstIndex = strings.LastIndex(dst, "/")
+	}
+
 	rename := false
 	if srcIndex == -1 && srcIndex == dstIndex {
 		rename = true
@@ -586,33 +595,38 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	var list model.FileListModel
 	var fi model.ListModel
+	fmt.Println(reqPath)
 	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
 		dirName := strings.TrimRight(reqPath, "/")
+		dirName = strings.TrimLeft(dirName, "/")
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		for _, i := range list.Items {
-			if i.Name == dirName {
-				fi = i
-				list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, i.FileId)
-				break
-			}
-		}
+
+		strArr := strings.Split(dirName, "/")
+
+		list, _ = findList(strArr, h.Config.Token, h.Config.DriveId)
 
 	} else if len(reqPath) == 0 {
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		if err != nil {
 			fmt.Println("获取列表失败")
 		}
+	} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+		strArr := strings.Split(reqPath, "/")
+		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 	}
+
 	if err != nil {
 		return status, err
 	}
 	ctx := r.Context()
-
-	if err != nil {
-		if os.IsNotExist(err) {
+	if (err != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" {
+		//新建或修改名称的时候需要判断是否已存在
+		if len(list.Items) == 0 {
 			return http.StatusNotFound, err
 		}
-		return http.StatusMethodNotAllowed, err
+
+		//return http.StatusMethodNotAllowed, err
 	}
 	depth := infiniteDepth
 	if hdr := r.Header.Get("Depth"); hdr != "" {
@@ -628,6 +642,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 
 	mw := multistatusWriter{w: w}
 
+	var prefix string = strings.TrimLeft(r.URL.Path, "/")
 	for _, v := range list.Items {
 		var pstats []Propstat
 		if pf.Propname != nil {
@@ -650,7 +665,13 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			fmt.Println(err)
 			continue
 		}
-		href := path.Join(h.Prefix, v.Name)
+		//href := ""
+		//if v.ParentFileId != "root" {
+		//	m := aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, v.ParentFileId)
+		//	href += m.Name + "/"
+		//}
+		//href += v.Name
+		href := path.Join(prefix, v.Name)
 		if href != "/" && v.Type == "folder" {
 			href += "/"
 		}
@@ -678,7 +699,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			fmt.Println(err)
 
 		}
-		href := path.Join(h.Prefix, fi.Name)
+		href := path.Join(prefix, fi.Name)
 		if href != "/" && fi.Type == "folder" {
 			href += "/"
 		}
@@ -784,6 +805,21 @@ func findUrl(strArr []string, token, driveId string, list model.FileListModel) (
 		}
 	}
 	return m, nil
+}
+
+func findList(strArr []string, token, driveId string) (model.FileListModel, error) {
+	var list model.FileListModel
+	list, _ = aliyun.GetList(token, driveId, "")
+	for _, a := range strArr {
+		for _, v := range list.Items {
+			if v.Name == a {
+				list, _ = aliyun.GetList(token, driveId, v.FileId)
+				break
+			}
+		}
+	}
+
+	return list, nil
 }
 
 func makePropstatResponse(href string, pstats []Propstat) *response {

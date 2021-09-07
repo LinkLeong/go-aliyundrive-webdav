@@ -77,10 +77,10 @@ func RefreshToken(refreshToken string) model.RefreshTokenModel {
 
 }
 
-func RemoveTrash(token string, driveId string, fileId string) bool {
+func RemoveTrash(token string, driveId string, fileId string, parentFileId string) bool {
 	rs := net.Post(model.APIREMOVETRASH, token, []byte(`{"drive_id":"`+driveId+`","file_id":"`+fileId+`"}`))
 	if len(rs) == 0 {
-		return true
+		cache.GoCache.Delete(parentFileId)
 	}
 	return false
 }
@@ -112,4 +112,14 @@ func MakeDir(token string, driveId string, name string, parentFileId string) boo
 		cache.GoCache.Delete(parentFileId)
 	}
 	return true
+}
+
+func GetFileDetail(token string, driveId string, fileId string) model.ListModel {
+	rs := net.Post(model.APIFILEDETAIL, token, []byte(`{"drive_id":"`+driveId+`","file_id":"`+fileId+`"}`))
+	var m model.ListModel
+	e := json.Unmarshal(rs, &m)
+	if e != nil {
+		fmt.Println(e)
+	}
+	return m
 }
