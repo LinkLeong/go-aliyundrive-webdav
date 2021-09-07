@@ -8,6 +8,7 @@ const (
 	APIFILEUPDATE      = APIBASE + "/v3/file/update"
 	APIMKDIR           = APIBASE + "/adrive/v2/file/createWithFolders"
 	APIFILEDETAIL      = APIBASE + "/v2/file/get"
+	APIFILEBATCH       = APIBASE + "/v3/batch"
 )
 
 type Config struct {

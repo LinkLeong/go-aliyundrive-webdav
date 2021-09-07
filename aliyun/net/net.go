@@ -63,6 +63,9 @@ func Get(url, token string) []byte {
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
+	if len(body) == 0 {
+		fmt.Println("获取详情报错")
+	}
 	if err != nil {
 		fmt.Println(err)
 		return nil

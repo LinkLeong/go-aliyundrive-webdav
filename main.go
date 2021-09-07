@@ -22,7 +22,7 @@ func main() {
 	var path *string
 	var refreshToken *string
 	//
-	addr = flag.String("addr", ":8085", "")
+	addr = flag.String("addr", "192.168.2.176:8085", "")
 	path = flag.String("path", "./", "")
 	//refreshToken = flag.String("rt", "a4d7e58c0f7949cb9c88670d9fb00a30", "refresh_token")
 	refreshToken = flag.String("rt", "75bd3b5b808e423bbc7bad5419caa15c", "refresh_token")

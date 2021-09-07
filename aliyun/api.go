@@ -123,3 +123,25 @@ func GetFileDetail(token string, driveId string, fileId string) model.ListModel 
 	}
 	return m
 }
+
+func BatchFile(token string, driveId string, fileId string, parentFileId string) bool {
+
+	//	{
+	//		"requests": ,
+	//	"resource": "file"
+	//	}
+
+	var bodyJson string = `{"drive_id": "` + driveId + `","file_id": "` + fileId + `","to_drive_id": "` + driveId + `","to_parent_file_id": "` + parentFileId + `"}`
+	var contentType string = `{"Content-Type": "application/json"}`
+
+	var requests string = `{"requests":[{"body": ` + bodyJson + `,"headers": ` + contentType + `,"id": "` + fileId + `","method": "POST","url": "/file/move"}],"resource": "file"}`
+
+	rs := net.Post(model.APIFILEBATCH, token, []byte(requests))
+	if gjson.GetBytes(rs, "responses.0.friends").Num == 200 {
+		cache.GoCache.Delete(parentFileId)
+		cache.GoCache.Delete(fileId)
+		return true
+	}
+
+	return false
+}

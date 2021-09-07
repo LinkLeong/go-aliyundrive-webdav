@@ -207,7 +207,13 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		fi, err := findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 		fmt.Println("dddd", err)
-		data = aliyun.GetFile(fi.Thumbnail, h.Config.Token)
+		url := fi.Thumbnail
+		//url:=fi.Url
+		if len(url) == 0 {
+			//url=fi.Url
+		}
+		data = aliyun.GetFile(url, h.Config.Token)
+		fmt.Println("dddd1", err)
 		//for _, i := range list.Items {
 		//	if i.Name == reqPath {
 		//		fi = i
@@ -385,11 +391,15 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 	if err != nil {
 		return status, err
 	}
+	src = strings.TrimRight(src, "/")
+	src = strings.TrimLeft(src, "/")
 
 	dst, status, err := h.stripPrefix(u.Path)
 	if err != nil {
 		return status, err
 	}
+	dst = strings.TrimRight(dst, "/")
+	dst = strings.TrimLeft(dst, "/")
 
 	if dst == "" {
 		return http.StatusBadGateway, errInvalidDestination
@@ -425,11 +435,28 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 		if dstIndex == -1 {
 			dstIndex = 0
 		}
-		aliyun.ReName(h.Config.Token, h.Config.DriveId, dst[dstIndex:], fi.FileId)
+		aliyun.ReName(h.Config.Token, h.Config.DriveId, dst[dstIndex+1:], fi.FileId)
+		return http.StatusNoContent, nil
+	}
+
+	if src[srcIndex+1:] == dst[dstIndex+1:] && srcIndex != dstIndex {
+		var fi model.ListModel
+		strArr := strings.Split(src, "/")
+		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+
+		strArrParent := strings.Split(dst[:dstIndex], "/")
+		parent, _ := findUrl(strArrParent, h.Config.Token, h.Config.DriveId, list)
+
+		aliyun.BatchFile(h.Config.Token, h.Config.DriveId, fi.FileId, parent.FileId)
 		return http.StatusNoContent, nil
 	}
 
 	ctx := r.Context()
+
+	if r.Method == "MOVE" {
+		fmt.Println("dfddf")
+	}
 
 	if r.Method == "COPY" {
 		// Section 7.5.1 says that a COPY only needs to lock the destination,

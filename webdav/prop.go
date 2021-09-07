@@ -400,7 +400,7 @@ func findDisplayName(ctx context.Context, fs FileSystem, ls LockSystem, fi model
 		// Hide the real name of a possibly prefixed root directory.
 		return "", nil
 	}
-	return escapeXML(fi.FileId), nil
+	return escapeXML(fi.Name), nil
 }
 
 func findContentLength(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
