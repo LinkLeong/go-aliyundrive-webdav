@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"go-aliyun/aliyun"
 	"go-aliyun/aliyun/model"
-	"io"
+	//"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -304,37 +304,69 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	if err != nil {
 		return status, err
 	}
-	release, status, err := h.confirmLocks(r, reqPath, "")
-	if err != nil {
-		return status, err
+	reqPath = strings.TrimLeft(reqPath, "/")
+	lastIndex := strings.LastIndex(reqPath, "/")
+	fileName := reqPath[lastIndex+1:]
+	if lastIndex == -1 {
+		lastIndex = 0
+		fileName = reqPath
 	}
-	defer release()
-	// TODO(rost): Support the If-Match, If-None-Match headers? See bradfitz'
-	// comments in http.checkEtag.
-	ctx := r.Context()
+	var fi model.ListModel
+	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+		strArr := strings.Split(reqPath[:lastIndex], "/")
+		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 
-	f, err := h.FileSystem.OpenFile(ctx, reqPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return http.StatusNotFound, err
+		//for _, i := range list.Items {
+		//	if i.Name == reqPath {
+		//		fi = i
+		//		data = aliyun.GetFile(i.Url, h.Config.Token)
+		//		break
+		//	}
+		//}
 	}
-	_, copyErr := io.Copy(f, r.Body)
-	//fi, statErr := f.Stat()
-	closeErr := f.Close()
-	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
-	if copyErr != nil {
-		return http.StatusMethodNotAllowed, copyErr
-	}
-	//if statErr != nil {
-	//	return http.StatusMethodNotAllowed, statErr
+	aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
+	//	aliyun.UploadFile(uploadUrl, h.Config.Token, data)
+	//	aliyun.UploadFileComplete(h.Config.Token, h.Config.DriveId, uploadId, fileId)
+	//	fmt.Println(reqPath)
+	//	fmt.Println(r.ContentLength)
+	//	release, status, err := h.confirmLocks(r, reqPath, "")
+	//	if err != nil {
+	//		return status, err
+	//	}
+	//	defer release()
+	//	// TODO(rost): Support the If-Match, If-None-Match headers? See bradfitz'
+	//	// comments in http.checkEtag.
+	//	ctx := r.Context()
+	//
+	//
+	//	f, err := h.FileSystem.OpenFile(ctx, "./aaa.png", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	//	if err != nil {
+	//		return http.StatusNotFound, err
+	//	}
+	//	fmt.Println(r.PostForm.Encode())
+	//	bts, err := ioutil.ReadAll(r.Body)
+	//	defer r.Body.Close()
+	//	fmt.Println(string(bts))
+	//	_, copyErr := io.Copy(f, r.Body)
+	//	fi, statErr := f.Stat()
+	//	fmt.Println(fi)
+	//	closeErr := f.Close()
+	//	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
+	//	if copyErr != nil {
+	//		return http.StatusMethodNotAllowed, copyErr
+	//	}
+	//	if statErr != nil {
+	//		return http.StatusMethodNotAllowed, statErr
+	//	}
+	//	if closeErr != nil {
+	//		return http.StatusMethodNotAllowed, closeErr
+	//	}
+	//etag, err := findETag(ctx, h.FileSystem, h.LockSystem, model.ListModel{})
+	//if err != nil {
+	//	return http.StatusInternalServerError, err
 	//}
-	if closeErr != nil {
-		return http.StatusMethodNotAllowed, closeErr
-	}
-	etag, err := findETag(ctx, h.FileSystem, h.LockSystem, model.ListModel{})
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-	w.Header().Set("ETag", etag)
+	//w.Header().Set("ETag", etag)
 	return http.StatusCreated, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"go-aliyun/aliyun/cache"
 	"go-aliyun/aliyun/model"
 	"go-aliyun/aliyun/net"
+	"strconv"
 )
 
 func GetList(token string, driveId string, parentFileId string) (model.FileListModel, error) {
@@ -142,6 +143,109 @@ func BatchFile(token string, driveId string, fileId string, parentFileId string)
 		cache.GoCache.Delete(fileId)
 		return true
 	}
+
+	return false
+}
+func UpdateFileFolder(token string, driveId string, fileName string, parentFileId string) bool {
+
+	//	{
+	//		"requests": ,
+	//	"resource": "file"
+	//	}
+	createData := `{"drive_id": "` + driveId + `","parent_file_id": "` + parentFileId + `","name": "` + fileName + `","check_name_mode": "refuse","type": "folder"}`
+
+	rs := net.Post(model.APIFILEUPLOAD, token, []byte(createData))
+	fmt.Println(rs)
+	//正确返回占星显示
+	//	{"parent_file_id":"60794ad941ee2d8d24f843b7a0ffd80279927dfc","type":"folder","file_id":"613caeb4d5b1ba9fb4604d4aa5aef2b408ab3121","domain_id":"bj29","drive_id":"1662258","file_name":"1SDSDSD.png","encrypt_mode":"none"}
+	//
+	//	{
+	//		"parent_file_id": "root",
+	//		"part_info_list": [
+	//	{
+	//		"part_number": 1,
+	//		"upload_url": "https://bj29.cn-beijing.data.alicloudccp.com/igQPcuUn%2F1662258%2F613a1091919bb599f4ac4917bfe16af6b7066795%2F613a10919ab3804e88e846ee9ea459de51d8f58d?partNumber=1&uploadId=BD8449BB161A4F54A1252E3B5B121641&x-oss-access-key-id=LTAIsE5mAn2F493Q&x-oss-expires=1631198881&x-oss-signature=wp2WCgyfqxZhJH%2BsPaw6XASRKXHa92p3e9NOjcN4Ui8%3D&x-oss-signature-version=OSS2",
+	//		"internal_upload_url": "http://ccp-bj29-bj-1592982087.oss-cn-beijing-internal.aliyuncs.com/igQPcuUn%2F1662258%2F613a1091919bb599f4ac4917bfe16af6b7066795%2F613a10919ab3804e88e846ee9ea459de51d8f58d?partNumber=1&uploadId=BD8449BB161A4F54A1252E3B5B121641&x-oss-access-key-id=LTAIsE5mAn2F493Q&x-oss-expires=1631198881&x-oss-signature=wp2WCgyfqxZhJH%2BsPaw6XASRKXHa92p3e9NOjcN4Ui8%3D&x-oss-signature-version=OSS2",
+	//		"content_type": ""
+	//	}
+	//],
+	//	"upload_id": "BD8449BB161A4F54A1252E3B5B121641",
+	//	"rapid_upload": false,
+	//	"type": "file",
+	//	"file_id": "613a1091919bb599f4ac4917bfe16af6b7066795",
+	//	"domain_id": "bj29",
+	//	"drive_id": "1662258",
+	//	"file_name": "photo_1614943806132229.jpg",
+	//	"encrypt_mode": "none",
+	//	"location": "cn-beijing"
+	//	}
+
+	return false
+}
+
+func UpdateFileFile(token string, driveId string, fileName string, parentFileId string, size string, length int) ([]gjson.Result, string, string) {
+
+	if len(parentFileId) == 0 {
+		parentFileId = "root"
+	}
+
+	var partStr string = "["
+	for i := 0; i < length; i++ {
+		partStr += `{"part_number":` + strconv.Itoa(i+1) + `},`
+	}
+	partStr = partStr[:len(partStr)-1]
+	partStr += "]"
+	createData := `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"auto_rename","size":` + size + `,"content_hash_name":"none","proof_version":"v1"}`
+	rs := net.Post(model.APIFILEUPLOADFILE, token, []byte(createData))
+	urlArr := gjson.GetBytes(rs, "part_info_list.#.upload_url").Array()
+	if len(urlArr) == 0 {
+		fmt.Println("创建文件出错", string(rs))
+	}
+	return urlArr, gjson.GetBytes(rs, "upload_id").Str, gjson.GetBytes(rs, "file_id").Str
+	//正确返回占星显示
+	//
+	//	{
+	//		"parent_file_id": "root",
+	//		"part_info_list": [
+	//	{
+	//		"part_number": 1,
+	//		"upload_url": "https://bj29.cn-beijing.data.alicloudccp.com/igQPcuUn%2F1662258%2F613a1091919bb599f4ac4917bfe16af6b7066795%2F613a10919ab3804e88e846ee9ea459de51d8f58d?partNumber=1&uploadId=BD8449BB161A4F54A1252E3B5B121641&x-oss-access-key-id=LTAIsE5mAn2F493Q&x-oss-expires=1631198881&x-oss-signature=wp2WCgyfqxZhJH%2BsPaw6XASRKXHa92p3e9NOjcN4Ui8%3D&x-oss-signature-version=OSS2",
+	//		"internal_upload_url": "http://ccp-bj29-bj-1592982087.oss-cn-beijing-internal.aliyuncs.com/igQPcuUn%2F1662258%2F613a1091919bb599f4ac4917bfe16af6b7066795%2F613a10919ab3804e88e846ee9ea459de51d8f58d?partNumber=1&uploadId=BD8449BB161A4F54A1252E3B5B121641&x-oss-access-key-id=LTAIsE5mAn2F493Q&x-oss-expires=1631198881&x-oss-signature=wp2WCgyfqxZhJH%2BsPaw6XASRKXHa92p3e9NOjcN4Ui8%3D&x-oss-signature-version=OSS2",
+	//		"content_type": ""
+	//	}
+	//],
+	//	"upload_id": "BD8449BB161A4F54A1252E3B5B121641",
+	//	"rapid_upload": false,
+	//	"type": "file",
+	//	"file_id": "613a1091919bb599f4ac4917bfe16af6b7066795",
+	//	"domain_id": "bj29",
+	//	"drive_id": "1662258",
+	//	"file_name": "photo_1614943806132229.jpg",
+	//	"encrypt_mode": "none",
+	//	"location": "cn-beijing"
+	//	}
+
+	//return false
+}
+func UploadFile(url string, token string, data []byte) {
+	rs := net.Put(url, token, data)
+	fmt.Println(string(rs))
+}
+func UploadFileComplete(token string, driveId string, uploadId string, fileId string, parentId string) bool {
+	//	private String drive_id;
+	//	private String file_id;
+	//	private String upload_id;
+	//	{
+	//		"requests": ,
+	//	"resource": "file"
+	//	}
+	createData := `{"drive_id": "` + driveId + `","file_id": "` + fileId + `","upload_id":"` + uploadId + `"}`
+
+	rs := net.Post(model.APIFILECOMPLETE, token, []byte(createData))
+	fmt.Println(rs)
+	//正确返回占星显示
+	//	}
+	cache.GoCache.Delete(parentId)
 
 	return false
 }

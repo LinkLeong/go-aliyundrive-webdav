@@ -25,7 +25,7 @@ func main() {
 	addr = flag.String("addr", "192.168.2.176:8085", "")
 	path = flag.String("path", "./", "")
 	//refreshToken = flag.String("rt", "a4d7e58c0f7949cb9c88670d9fb00a30", "refresh_token")
-	refreshToken = flag.String("rt", "75bd3b5b808e423bbc7bad5419caa15c", "refresh_token")
+	refreshToken = flag.String("rt", "61e9d623b0f147cb8a6e08add70f2b54", "refresh_token")
 	flag.Parse()
 
 	//todo 判断
@@ -45,6 +45,9 @@ func main() {
 		LockSystem: webdav.NewMemLS(),
 		Config:     config,
 	}
+
+	//fmt.p
+
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		// 获取用户名/密码
 		//username, password, ok := req.BasicAuth()
