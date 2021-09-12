@@ -7,6 +7,7 @@ import (
 	"go-aliyun/aliyun/cache"
 	"go-aliyun/aliyun/model"
 	"go-aliyun/aliyun/net"
+	"io"
 	"strconv"
 )
 
@@ -55,11 +56,12 @@ func GetList(token string, driveId string, parentFileId string) (model.FileListM
 	return list, nil
 }
 
-func GetFile(url string, token string) []byte {
+func GetFile(url string, token string) io.ReadCloser {
 
 	body := net.Get(url, token)
-
+	//net.GetProxy(w, req, url, token)
 	return body
+	//return []byte{}
 }
 
 func RefreshToken(refreshToken string) model.RefreshTokenModel {

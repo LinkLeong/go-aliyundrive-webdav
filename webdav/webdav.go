@@ -6,7 +6,6 @@
 package webdav // import "golang.org/x/net/webdav"
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"go-aliyun/aliyun"
@@ -199,7 +198,7 @@ func (h *Handler) handleOptions(w http.ResponseWriter, r *http.Request) (status 
 }
 
 func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (status int, err error) {
-	var data []byte
+	//var data []byte
 	var fi model.ListModel
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
@@ -207,13 +206,25 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		fi, err := findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 		fmt.Println("dddd", err)
-		url := fi.Thumbnail
-		//url:=fi.Url
+		//url := fi.Thumbnail
+		url := fi.Url
 		if len(url) == 0 {
 			//url=fi.Url
 		}
-		data = aliyun.GetFile(url, h.Config.Token)
+		dataIO := aliyun.GetFile(url, h.Config.Token)
 		fmt.Println("dddd1", err)
+		if fi.Type == "folder" {
+			return http.StatusMethodNotAllowed, nil
+		}
+		ctx := r.Context()
+		etag, err := findETag(ctx, h.FileSystem, h.LockSystem, fi)
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+		w.Header().Set("ETag", etag)
+
+		http.ServeContent(w, r, reqPath, fi.UpdatedAt, dataIO)
+		return 0, nil
 		//for _, i := range list.Items {
 		//	if i.Name == reqPath {
 		//		fi = i
@@ -227,7 +238,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		return status, err
 	}
 	// TODO: check locks for read-only access??
-	ctx := r.Context()
+
 	//f, err := h.FileSystem.OpenFile(ctx, reqPath, os.O_RDONLY, 0)
 	//if err != nil {
 	//	return http.StatusNotFound, err
@@ -240,13 +251,14 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	if fi.Type == "folder" {
 		return http.StatusMethodNotAllowed, nil
 	}
-	etag, err := findETag(ctx, h.FileSystem, h.LockSystem, fi)
+	ctx1 := r.Context()
+	etag, err := findETag(ctx1, h.FileSystem, h.LockSystem, fi)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
 	w.Header().Set("ETag", etag)
 
-	http.ServeContent(w, r, reqPath, fi.UpdatedAt, bytes.NewReader(data))
+	http.ServeContent(w, r, reqPath, fi.UpdatedAt, nil)
 	return 0, nil
 }
 

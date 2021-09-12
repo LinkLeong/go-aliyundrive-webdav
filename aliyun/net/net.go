@@ -3,8 +3,11 @@ package net
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 )
 
 func Post(url, token string, data []byte) []byte {
@@ -61,7 +64,7 @@ func Put(url, token string, data []byte) []byte {
 	}
 	return body
 }
-func Get(url, token string) []byte {
+func Get(url, token string) io.ReadCloser {
 
 	method := "GET"
 
@@ -84,15 +87,59 @@ func Get(url, token string) []byte {
 		fmt.Println(err)
 		return nil
 	}
-	defer res.Body.Close()
+	return res.Body
 
-	body, err := ioutil.ReadAll(res.Body)
-	if len(body) == 0 {
-		fmt.Println("获取详情报错")
+	//	body, err := ioutil.ReadAll(res.Body)
+	//	if len(body) == 0 {
+	//		fmt.Println("获取详情报错")
+	//	}
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		return nil
+	//	}
+	//	return body
+}
+func GetProxy(w http.ResponseWriter, req *http.Request, urlStr, token string) []byte {
+
+	//method := "GET"
+	u, _ := url.Parse(urlStr)
+	proxy := httputil.ReverseProxy{
+		Director: func(request *http.Request) {
+			request.URL = u
+			request.Header.Add("referer", "https://www.aliyundrive.com/")
+			request.Header.Add("Authorization", "Bearer "+token)
+		},
 	}
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
-	return body
+	proxy.ServeHTTP(w, req)
+	//	client := &http.Client{}
+	return []byte{}
+	//	req, err := http.NewRequest(method, url, nil)
+	//
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		return nil
+	//	}
+	//	//req.Header.Add("accept", "application/json, text/plain, */*")
+	//	//req.Header.Add("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 //Safari/537.36")
+	//	//req.Header.Add("content-type", "application/json;charset=UTF-8")
+	//	//req.Header.Add("origin", "https://www.aliyundrive.com")
+	//	req.Header.Add("referer", "https://www.aliyundrive.com/")
+	//	req.Header.Add("Authorization", "Bearer "+token)
+	//
+	//	res, err := client.Do(req)
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		return nil
+	//	}
+	//	defer res.Body.Close()
+	//
+	//	body, err := ioutil.ReadAll(res.Body)
+	//	if len(body) == 0 {
+	//		fmt.Println("获取详情报错")
+	//	}
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		return nil
+	//	}
+	//	return body
 }
