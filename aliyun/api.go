@@ -7,7 +7,7 @@ import (
 	"go-aliyun/aliyun/cache"
 	"go-aliyun/aliyun/model"
 	"go-aliyun/aliyun/net"
-	"io"
+	"net/http"
 	"strconv"
 )
 
@@ -56,9 +56,9 @@ func GetList(token string, driveId string, parentFileId string) (model.FileListM
 	return list, nil
 }
 
-func GetFile(url string, token string) io.ReadCloser {
+func GetFile(w http.ResponseWriter, url string, token string, rangeStr string, ifRange string) bool {
 
-	body := net.Get(url, token)
+	body := net.Get(w, url, token, rangeStr, ifRange)
 	//net.GetProxy(w, req, url, token)
 	return body
 	//return []byte{}
@@ -250,4 +250,19 @@ func UploadFileComplete(token string, driveId string, uploadId string, fileId st
 	cache.GoCache.Delete(parentId)
 
 	return false
+}
+func GetDownloadUrl(token string, driveId string, fileId string) (string) {
+
+
+
+	postData := make(map[string]interface{})
+	postData["drive_id"] = driveId
+	postData["file_id"] = fileId
+
+	data, _ := json.Marshal(postData)
+
+
+	body := net.Post(model.APIFILEDOWNLOAD, token, data)
+	return gjson.GetBytes(body,"url").Str
+
 }

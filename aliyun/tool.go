@@ -3,6 +3,7 @@ package aliyun
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"strconv"
@@ -19,7 +20,16 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	byteSize := DEFAULT
 
 	count = math.Ceil(float64(r.ContentLength) / float64(DEFAULT))
-
+//fmt.Println(r.Body)
+fmt.Println(r.Trailer)
+	fmt.Println("content-length",r.Header.Get("content-length"))
+	fmt.Println(r.Header.Get("X-Expected-Entity-Length"))
+	fmt.Println(r.Header.Get("Expect"))
+	if r.ContentLength==0 {
+	//	return
+	}
+	d,_:=ioutil.ReadAll(r.Body)
+	fmt.Println(len(d))
 	uploadUrl, uploadId, fileId := UpdateFileFile(token, driveId, fileName, parentId, strconv.FormatInt(r.ContentLength, 10), int(count))
 	if len(uploadUrl) == 0 {
 		return

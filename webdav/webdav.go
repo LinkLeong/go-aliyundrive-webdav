@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"go-aliyun/aliyun"
 	"go-aliyun/aliyun/model"
-	//"io/ioutil"
+	"io"
+	"strconv"
+
 	"net/http"
 	"net/url"
 	"os"
@@ -45,11 +47,6 @@ func (h *Handler) stripPrefix(p string) (string, int, error) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status, err := http.StatusBadRequest, errUnsupportedMethod
-	if h.FileSystem == nil {
-		status, err = http.StatusInternalServerError, errNoFileSystem
-	} else if h.LockSystem == nil {
-		status, err = http.StatusInternalServerError, errNoLockSystem
-	} else {
 		fmt.Println(r.Method)
 		fmt.Println(r.URL)
 		switch r.Method {
@@ -74,7 +71,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "PROPPATCH":
 			status, err = h.handleProppatch(w, r)
 		}
-	}
+
 
 	if status != 0 {
 		w.WriteHeader(status)
@@ -205,14 +202,35 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		strArr := strings.Split(reqPath, "/")
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		fi, err := findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-		fmt.Println("dddd", err)
+		//		fmt.Println("dddd", err)
 		//url := fi.Thumbnail
-		url := fi.Url
-		if len(url) == 0 {
+		//url := fi.Url
+		//if len(url) == 0 {
 			//url=fi.Url
+		//}
+		rangeStr := r.Header.Get("range")
+
+		if len(rangeStr) > 0 && strings.LastIndex(rangeStr, "-") > 0 {
+			rangeArr := strings.Split(rangeStr, "-")
+			fmt.Println("未处理之前", rangeStr)
+			rangEnd, _ := strconv.Atoi(rangeArr[1])
+			if rangEnd >= fi.Size {
+				rangeStr = rangeStr[:strings.LastIndex(rangeStr, "-")+1]
+			}
 		}
-		dataIO := aliyun.GetFile(url, h.Config.Token)
-		fmt.Println("dddd1", err)
+		//rangeStr = "bytes=0-" + strconv.Itoa(fi.Size)
+		fmt.Println(rangeStr)
+		fmt.Println("if-range",r.Header.Get("if-range"))
+		if r.Method != "HEAD" {
+			if strings.Index( r.URL.String(),"025.jpg")>0 {
+				fmt.Println("025")
+			}
+			downloadUrl:=aliyun.GetDownloadUrl(h.Config.Token,h.Config.DriveId,fi.FileId)
+			aliyun.GetFile(w, downloadUrl, h.Config.Token, rangeStr, r.Header.Get("if-range"))
+		}
+
+		fmt.Println("长度", fi.Size)
+		fmt.Println("range", r.Header.Get("range"))
 		if fi.Type == "folder" {
 			return http.StatusMethodNotAllowed, nil
 		}
@@ -223,7 +241,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		}
 		w.Header().Set("ETag", etag)
 
-		http.ServeContent(w, r, reqPath, fi.UpdatedAt, dataIO)
+		//http.ServeContent(w, r, reqPath, int64(fi.Size), fi.UpdatedAt)
 		return 0, nil
 		//for _, i := range list.Items {
 		//	if i.Name == reqPath {
@@ -258,7 +276,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	}
 	w.Header().Set("ETag", etag)
 
-	http.ServeContent(w, r, reqPath, fi.UpdatedAt, nil)
+	http.ServeContent(w, r, reqPath, 0, fi.UpdatedAt)
 	return 0, nil
 }
 
@@ -312,6 +330,9 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) (status i
 }
 
 func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int, err error) {
+	if r.Header.Get("overwrite")=="f"{
+		return http.StatusPreconditionFailed, nil
+	}
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	if err != nil {
 		return status, err
@@ -323,6 +344,8 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 		lastIndex = 0
 		fileName = reqPath
 	}
+	fmt.Println(fileName)
+	fmt.Println(r.TransferEncoding)
 	var fi model.ListModel
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath[:lastIndex], "/")
@@ -337,7 +360,9 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 		//	}
 		//}
 	}
-	aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
+
+fmt.Println(r.ContentLength)
+	//aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
 	//	aliyun.UploadFile(uploadUrl, h.Config.Token, data)
 	//	aliyun.UploadFileComplete(h.Config.Token, h.Config.DriveId, uploadId, fileId)
 	//	fmt.Println(reqPath)
@@ -349,31 +374,31 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	//	defer release()
 	//	// TODO(rost): Support the If-Match, If-None-Match headers? See bradfitz'
 	//	// comments in http.checkEtag.
-	//	ctx := r.Context()
+		ctx := r.Context()
 	//
 	//
-	//	f, err := h.FileSystem.OpenFile(ctx, "./aaa.png", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	//	if err != nil {
-	//		return http.StatusNotFound, err
-	//	}
+		f, err := h.FileSystem.OpenFile(ctx, "./aaa.png", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+		if err != nil {
+			return http.StatusNotFound, err
+		}
 	//	fmt.Println(r.PostForm.Encode())
-	//	bts, err := ioutil.ReadAll(r.Body)
-	//	defer r.Body.Close()
+//		bts, err := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
 	//	fmt.Println(string(bts))
-	//	_, copyErr := io.Copy(f, r.Body)
-	//	fi, statErr := f.Stat()
-	//	fmt.Println(fi)
-	//	closeErr := f.Close()
+		_, copyErr := io.Copy(f, r.Body)
+		//fif, statErr := f.Stat()
+		fmt.Println(fi)
+		closeErr := f.Close()
 	//	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
-	//	if copyErr != nil {
-	//		return http.StatusMethodNotAllowed, copyErr
-	//	}
-	//	if statErr != nil {
-	//		return http.StatusMethodNotAllowed, statErr
-	//	}
-	//	if closeErr != nil {
-	//		return http.StatusMethodNotAllowed, closeErr
-	//	}
+		if copyErr != nil {
+			return http.StatusMethodNotAllowed, copyErr
+		}
+		//if statErr != nil {
+		//	return http.StatusMethodNotAllowed, statErr
+		//}
+		if closeErr != nil {
+			return http.StatusMethodNotAllowed, closeErr
+		}
 	//etag, err := findETag(ctx, h.FileSystem, h.LockSystem, model.ListModel{})
 	//if err != nil {
 	//	return http.StatusInternalServerError, err

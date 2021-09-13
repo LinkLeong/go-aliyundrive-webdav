@@ -64,7 +64,7 @@ func Put(url, token string, data []byte) []byte {
 	}
 	return body
 }
-func Get(url, token string) io.ReadCloser {
+func Get(w http.ResponseWriter, url, token string, rangeStr string, ifRange string) bool {
 
 	method := "GET"
 
@@ -73,7 +73,7 @@ func Get(url, token string) io.ReadCloser {
 
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return false
 	}
 	//req.Header.Add("accept", "application/json, text/plain, */*")
 	//req.Header.Add("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36")
@@ -81,13 +81,18 @@ func Get(url, token string) io.ReadCloser {
 	//req.Header.Add("origin", "https://www.aliyundrive.com")
 	req.Header.Add("referer", "https://www.aliyundrive.com/")
 	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("range", rangeStr)
+	req.Header.Add("if-range", ifRange)
+	fmt.Println(rangeStr)
 
 	res, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
-		return nil
+		return false
 	}
-	return res.Body
+	io.Copy(w, res.Body)
+	res.Body.Close()
+	return true
 
 	//	body, err := ioutil.ReadAll(res.Body)
 	//	if len(body) == 0 {
