@@ -7,6 +7,8 @@ package webdav
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
+	"go-aliyun/aliyun/model"
 	"io"
 	"net/http"
 	"os"
@@ -750,49 +752,38 @@ func copyFiles(ctx context.Context, fs FileSystem, src, dst string, overwrite bo
 	return http.StatusNoContent, nil
 }
 
+type WalkFunc func(parent model.ListModel, info model.FileListModel, err error) error
+
 // walkFS traverses filesystem fs starting at name up to depth levels.
 //
 // Allowed values for depth are 0, 1 or infiniteDepth. For each visited node,
 // walkFS calls walkFn. If a visited file system node is a directory and
 // walkFn returns filepath.SkipDir, walkFS will skip traversal of this node.
-func walkFS(ctx context.Context, fs FileSystem, depth int, name string, info os.FileInfo, walkFn filepath.WalkFunc) error {
+func walkFS(ctx context.Context, fs FileSystem, depth int, parent model.ListModel, info model.FileListModel, walkFn WalkFunc, token, driver string) error {
 	// This implementation is based on Walk's code in the standard path/filepath package.
-	err := walkFn(name, info, nil)
+	err := walkFn(parent, info, nil)
 	if err != nil {
-		if info.IsDir() && err == filepath.SkipDir {
-			return nil
-		}
-		return err
-	}
-	if !info.IsDir() || depth == 0 {
-		return nil
+		fmt.Println(err)
 	}
 	if depth == 1 {
 		depth = 0
 	}
 
 	// Read directory names.
-	f, err := fs.OpenFile(ctx, name, os.O_RDONLY, 0)
-	if err != nil {
-		return walkFn(name, info, err)
-	}
-	fileInfos, err := f.Readdir(0)
-	f.Close()
-	if err != nil {
-		return walkFn(name, info, err)
-	}
 
-	for _, fileInfo := range fileInfos {
-		filename := path.Join(name, fileInfo.Name())
-		fileInfo, err := fs.Stat(ctx, filename)
+	for _, fileInfo := range info.Items {
+		//filename := path.Join(parent.Name, fileInfo.Name)
+		//fileInfo, err := fs.Stat(ctx, filename)
+		//fileList, err := aliyun.GetList(token, driver, fileInfo.FileId)
+		var fileList model.FileListModel
 		if err != nil {
-			if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
+			if err := walkFn(fileInfo, fileList, err); err != nil && err != filepath.SkipDir {
 				return err
 			}
 		} else {
-			err = walkFS(ctx, fs, depth, filename, fileInfo, walkFn)
+			err = walkFS(ctx, fs, depth, fileInfo, fileList, walkFn, token, driver)
 			if err != nil {
-				if !fileInfo.IsDir() || err != filepath.SkipDir {
+				if fileInfo.Type != "folder" || err != filepath.SkipDir {
 					return err
 				}
 			}

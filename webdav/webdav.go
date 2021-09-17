@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"go-aliyun/aliyun"
+	"go-aliyun/aliyun/cache"
 	"go-aliyun/aliyun/model"
 	"io"
+	"reflect"
 	"strconv"
 
 	"net/http"
@@ -47,31 +49,35 @@ func (h *Handler) stripPrefix(p string) (string, int, error) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status, err := http.StatusBadRequest, errUnsupportedMethod
-		fmt.Println(r.Method)
-		fmt.Println(r.URL)
-		switch r.Method {
-		case "OPTIONS":
-			status, err = h.handleOptions(w, r)
-		case "GET", "HEAD", "POST":
-			status, err = h.handleGetHeadPost(w, r)
-		case "DELETE":
-			status, err = h.handleDelete(w, r)
-		case "PUT":
-			status, err = h.handlePut(w, r)
-		case "MKCOL":
-			status, err = h.handleMkcol(w, r)
-		case "COPY", "MOVE":
-			status, err = h.handleCopyMove(w, r)
-		case "LOCK":
-			status, err = h.handleLock(w, r)
-		case "UNLOCK":
-			status, err = h.handleUnlock(w, r)
-		case "PROPFIND":
-			status, err = h.handlePropfind(w, r)
-		case "PROPPATCH":
-			status, err = h.handleProppatch(w, r)
-		}
-
+	fmt.Println(r.Method)
+	fmt.Println(r.URL)
+	if h.FileSystem == nil {
+		status, err = http.StatusInternalServerError, errNoFileSystem
+	} else if h.LockSystem == nil {
+		status, err = http.StatusInternalServerError, errNoLockSystem
+	}
+	switch r.Method {
+	case "OPTIONS":
+		status, err = h.handleOptions(w, r)
+	case "GET", "HEAD", "POST":
+		status, err = h.handleGetHeadPost(w, r)
+	case "DELETE":
+		status, err = h.handleDelete(w, r)
+	case "PUT":
+		status, err = h.handlePut(w, r)
+	case "MKCOL":
+		status, err = h.handleMkcol(w, r)
+	case "COPY", "MOVE":
+		status, err = h.handleCopyMove(w, r)
+	case "LOCK":
+		status, err = h.handleLock(w, r)
+	case "UNLOCK":
+		status, err = h.handleUnlock(w, r)
+	case "PROPFIND":
+		status, err = h.handlePropfind(w, r)
+	case "PROPPATCH":
+		status, err = h.handleProppatch(w, r)
+	}
 
 	if status != 0 {
 		w.WriteHeader(status)
@@ -206,7 +212,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		//url := fi.Thumbnail
 		//url := fi.Url
 		//if len(url) == 0 {
-			//url=fi.Url
+		//url=fi.Url
 		//}
 		rangeStr := r.Header.Get("range")
 
@@ -220,12 +226,12 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 		}
 		//rangeStr = "bytes=0-" + strconv.Itoa(fi.Size)
 		fmt.Println(rangeStr)
-		fmt.Println("if-range",r.Header.Get("if-range"))
+		fmt.Println("if-range", r.Header.Get("if-range"))
 		if r.Method != "HEAD" {
-			if strings.Index( r.URL.String(),"025.jpg")>0 {
+			if strings.Index(r.URL.String(), "025.jpg") > 0 {
 				fmt.Println("025")
 			}
-			downloadUrl:=aliyun.GetDownloadUrl(h.Config.Token,h.Config.DriveId,fi.FileId)
+			downloadUrl := aliyun.GetDownloadUrl(h.Config.Token, h.Config.DriveId, fi.FileId)
 			aliyun.GetFile(w, downloadUrl, h.Config.Token, rangeStr, r.Header.Get("if-range"))
 		}
 
@@ -276,7 +282,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	}
 	w.Header().Set("ETag", etag)
 
-	http.ServeContent(w, r, reqPath, 0, fi.UpdatedAt)
+	//http.ServeContent(w, r, reqPath, 0, fi.UpdatedAt)
 	return 0, nil
 }
 
@@ -330,22 +336,16 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) (status i
 }
 
 func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int, err error) {
-	if r.Header.Get("overwrite")=="f"{
-		return http.StatusPreconditionFailed, nil
-	}
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	if err != nil {
 		return status, err
 	}
-	reqPath = strings.TrimLeft(reqPath, "/")
 	lastIndex := strings.LastIndex(reqPath, "/")
 	fileName := reqPath[lastIndex+1:]
 	if lastIndex == -1 {
 		lastIndex = 0
 		fileName = reqPath
 	}
-	fmt.Println(fileName)
-	fmt.Println(r.TransferEncoding)
 	var fi model.ListModel
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath[:lastIndex], "/")
@@ -361,8 +361,24 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 		//}
 	}
 
-fmt.Println(r.ContentLength)
-	//aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
+	fmt.Println(r.ContentLength)
+	if r.ContentLength == 0 {
+		if reflect.DeepEqual(fi, model.ListModel{}) {
+			fi.FileId = "root"
+		}
+		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, fi.FileId)
+		var item model.ListModel
+		item.ParentFileId = fi.FileId
+		item.Name = fileName
+		list.Items = append(list.Items, item)
+		cache.GoCache.SetDefault(fi.FileId, list)
+
+		defer r.Body.Close()
+		return http.StatusCreated, nil
+	}
+
+	aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
+
 	//	aliyun.UploadFile(uploadUrl, h.Config.Token, data)
 	//	aliyun.UploadFileComplete(h.Config.Token, h.Config.DriveId, uploadId, fileId)
 	//	fmt.Println(reqPath)
@@ -374,31 +390,31 @@ fmt.Println(r.ContentLength)
 	//	defer release()
 	//	// TODO(rost): Support the If-Match, If-None-Match headers? See bradfitz'
 	//	// comments in http.checkEtag.
-		ctx := r.Context()
+	ctx := r.Context()
 	//
 	//
-		f, err := h.FileSystem.OpenFile(ctx, "./aaa.png", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-		if err != nil {
-			return http.StatusNotFound, err
-		}
+	f, err := h.FileSystem.OpenFile(ctx, "./aaa.png", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return http.StatusNotFound, err
+	}
 	//	fmt.Println(r.PostForm.Encode())
-//		bts, err := ioutil.ReadAll(r.Body)
-		defer r.Body.Close()
+	//		bts, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
 	//	fmt.Println(string(bts))
-		_, copyErr := io.Copy(f, r.Body)
-		//fif, statErr := f.Stat()
-		fmt.Println(fi)
-		closeErr := f.Close()
+	_, copyErr := io.Copy(f, r.Body)
+	//fif, statErr := f.Stat()
+	fmt.Println(fi)
+	closeErr := f.Close()
 	//	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
-		if copyErr != nil {
-			return http.StatusMethodNotAllowed, copyErr
-		}
-		//if statErr != nil {
-		//	return http.StatusMethodNotAllowed, statErr
-		//}
-		if closeErr != nil {
-			return http.StatusMethodNotAllowed, closeErr
-		}
+	if copyErr != nil {
+		return http.StatusMethodNotAllowed, copyErr
+	}
+	//if statErr != nil {
+	//	return http.StatusMethodNotAllowed, statErr
+	//}
+	if closeErr != nil {
+		return http.StatusMethodNotAllowed, closeErr
+	}
 	//etag, err := findETag(ctx, h.FileSystem, h.LockSystem, model.ListModel{})
 	//if err != nil {
 	//	return http.StatusInternalServerError, err
@@ -716,7 +732,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		return status, err
 	}
 	ctx := r.Context()
-	if (err != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" {
+	if (err != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" && strings.Index(reqPath, "test.png") == -1 {
 		//新建或修改名称的时候需要判断是否已存在
 		if len(list.Items) == 0 {
 			return http.StatusNotFound, err
@@ -738,84 +754,14 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 
 	mw := multistatusWriter{w: w}
 
-	var prefix string = strings.TrimLeft(r.URL.Path, "/")
-	for _, v := range list.Items {
-		var pstats []Propstat
-		if pf.Propname != nil {
-			pnames, err := propnames(v)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			pstat := Propstat{Status: http.StatusOK}
-			for _, xmlname := range pnames {
-				pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
-			}
-			pstats = append(pstats, pstat)
-		} else if pf.Allprop != nil {
-			pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, v)
-		} else {
-			pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, v)
-		}
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		//href := ""
-		//if v.ParentFileId != "root" {
-		//	m := aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, v.ParentFileId)
-		//	href += m.Name + "/"
-		//}
-		//href += v.Name
-		href := path.Join(prefix, v.Name)
-		if href != "/" && v.Type == "folder" {
-			href += "/"
-		}
-		mw.write(makePropstatResponse(href, pstats))
-	}
-
-	if len(list.Items) == 0 {
-		var pstats []Propstat
-		if pf.Propname != nil {
-			pnames, err := propnames(fi)
-			if err != nil {
-				fmt.Println(err)
-			}
-			pstat := Propstat{Status: http.StatusOK}
-			for _, xmlname := range pnames {
-				pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
-			}
-			pstats = append(pstats, pstat)
-		} else if pf.Allprop != nil {
-			pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
-		} else {
-			pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
-		}
-		if err != nil {
-			fmt.Println(err)
-
-		}
-		href := path.Join(prefix, fi.Name)
-		if href != "/" && fi.Type == "folder" {
-			href += "/"
-		}
-		mw.write(makePropstatResponse(href, pstats))
-	}
-
-	//if err != nil {
-	//	return err
-	//}
-	//
-
-	//walkFn := func(reqPath string, info0 os.FileInfo, err error) error {
-	//	if err != nil {
-	//		return err
-	//	}
+	//var prefix string = strings.TrimLeft(r.URL.Path, "/")
+	//for _, v := range list.Items {
 	//	var pstats []Propstat
 	//	if pf.Propname != nil {
-	//		pnames, err := propnames(ctx, h.FileSystem, h.LockSystem, reqPath)
+	//		pnames, err := propnames(v)
 	//		if err != nil {
-	//			return err
+	//			fmt.Println(err)
+	//			continue
 	//		}
 	//		pstat := Propstat{Status: http.StatusOK}
 	//		for _, xmlname := range pnames {
@@ -823,25 +769,98 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	//		}
 	//		pstats = append(pstats, pstat)
 	//	} else if pf.Allprop != nil {
-	//		pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, reqPath, pf.Prop)
+	//		pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, v)
 	//	} else {
-	//		pstats, err = props(ctx, h.FileSystem, h.LockSystem, reqPath, pf.Prop)
+	//		pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, v)
 	//	}
 	//	if err != nil {
-	//		return err
+	//		fmt.Println(err)
+	//		continue
 	//	}
-	//	href := path.Join(h.Prefix, reqPath)
-	//	if href != "/" && info.IsDir() {
+	//	//href := ""
+	//	//if v.ParentFileId != "root" {
+	//	//	m := aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, v.ParentFileId)
+	//	//	href += m.Name + "/"
+	//	//}
+	//	//href += v.Name
+	//	href := path.Join(prefix, v.Name)
+	//	if href != "/" && v.Type == "folder" {
 	//		href += "/"
 	//	}
-	//	return mw.write(makePropstatResponse(href, pstats))
+	//	mw.write(makePropstatResponse(href, pstats))
+	//}
+	//
+	//if len(list.Items) == 0 {
+	//	var pstats []Propstat
+	//	if pf.Propname != nil {
+	//		pnames, err := propnames(fi)
+	//		if err != nil {
+	//			fmt.Println(err)
+	//		}
+	//		pstat := Propstat{Status: http.StatusOK}
+	//		for _, xmlname := range pnames {
+	//			pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
+	//		}
+	//		pstats = append(pstats, pstat)
+	//	} else if pf.Allprop != nil {
+	//		pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
+	//	} else {
+	//		pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
+	//	}
+	//	if err != nil {
+	//		fmt.Println(err)
+	//
+	//	}
+	//	href := path.Join(prefix, fi.Name)
+	//	if href != "/" && fi.Type == "folder" {
+	//		href += "/"
+	//	}
+	//	mw.write(makePropstatResponse(href, pstats))
 	//}
 
-	//walkErr := walkFS(ctx, h.FileSystem, depth, info, reqPath, walkFn)
-	closeErr := mw.close()
-	//if walkErr != nil {
-	//	return http.StatusInternalServerError, walkErr
+	//if err != nil {
+	//	return err
 	//}
+	//
+
+	walkFn := func(parent model.ListModel, info model.FileListModel, err error) error {
+		if reflect.DeepEqual(parent, model.ListModel{}) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		var pstats []Propstat
+		if pf.Propname != nil {
+			pnames, err := propnames(parent)
+			if err != nil {
+				return err
+			}
+			pstat := Propstat{Status: http.StatusOK}
+			for _, xmlname := range pnames {
+				pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
+			}
+			pstats = append(pstats, pstat)
+		} else if pf.Allprop != nil {
+			pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, parent)
+		} else {
+			pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, parent)
+		}
+		if err != nil {
+			return err
+		}
+		href := path.Join(h.Prefix, parent.Name)
+		if href != "/" && fi.Type == "folder" {
+			href += "/"
+		}
+		return mw.write(makePropstatResponse(href, pstats))
+	}
+
+	walkErr := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId)
+	closeErr := mw.close()
+	if walkErr != nil {
+		return http.StatusInternalServerError, walkErr
+	}
 	if closeErr != nil {
 		return http.StatusInternalServerError, closeErr
 	}

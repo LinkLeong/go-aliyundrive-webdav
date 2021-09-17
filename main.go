@@ -42,26 +42,25 @@ func main() {
 	fs := &webdav.Handler{
 		Prefix:     "/",
 		FileSystem: webdav.Dir(*path),
-	//	LockSystem: webdav.NewMemLS(),
+		LockSystem: webdav.NewMemLS(),
 		Config:     config,
 	}
 
 	//fmt.p
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		fmt.Println("最早的长度",req.Body)
 		// 获取用户名/密码
-		username, password, ok := req.BasicAuth()
-		if !ok {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-	//	 验证用户名/密码
-		if username != "user" || password != "123456" {
-			http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
-			return
-		}
+		//	username, password, ok := req.BasicAuth()
+		//	if !ok {
+		//		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+		//		w.WriteHeader(http.StatusUnauthorized)
+		//		return
+		//	}
+		////	 验证用户名/密码
+		//	if username != "user" || password != "123456" {
+		//		http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+		//		return
+		//	}
 
 		// Add CORS headers before any operation so even on a 401 unauthorized status, CORS will work.
 
@@ -83,8 +82,6 @@ func main() {
 		}
 
 		fmt.Println(req.URL)
-fmt.Println("文本长度",req.ContentLength)
-		fmt.Println(req.Header)
 		fs.ServeHTTP(w, req)
 	})
 
