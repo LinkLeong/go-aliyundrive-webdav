@@ -8,9 +8,9 @@ package webdav // import "golang.org/x/net/webdav"
 import (
 	"errors"
 	"fmt"
-	"go-aliyun/aliyun"
-	"go-aliyun/aliyun/cache"
-	"go-aliyun/aliyun/model"
+	"go-aliyun-webdav/aliyun"
+	"go-aliyun-webdav/aliyun/cache"
+	"go-aliyun-webdav/aliyun/model"
 	"io"
 	"reflect"
 	"strconv"
@@ -49,13 +49,17 @@ func (h *Handler) stripPrefix(p string) (string, int, error) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status, err := http.StatusBadRequest, errUnsupportedMethod
-	fmt.Println(r.Method)
-	fmt.Println(r.URL)
-	if h.FileSystem == nil {
-		status, err = http.StatusInternalServerError, errNoFileSystem
-	} else if h.LockSystem == nil {
-		status, err = http.StatusInternalServerError, errNoLockSystem
+	if h.Config.ExpireTime < time.Now().Unix()-100 {
+		refreshResult := aliyun.RefreshToken(h.Config.RefreshToken)
+		config := model.Config{
+			RefreshToken: refreshResult.RefreshToken,
+			Token:        refreshResult.AccessToken,
+			DriveId:      refreshResult.DefaultDriveId,
+			ExpireTime:   time.Now().Unix() + refreshResult.ExpiresIn,
+		}
+		h.Config = config
 	}
+
 	switch r.Method {
 	case "OPTIONS":
 		status, err = h.handleOptions(w, r)
@@ -207,8 +211,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath, "/")
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		fi, err := findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-		//		fmt.Println("dddd", err)
+		fi, err = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 		//url := fi.Thumbnail
 		//url := fi.Url
 		//if len(url) == 0 {
@@ -218,25 +221,19 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 
 		if len(rangeStr) > 0 && strings.LastIndex(rangeStr, "-") > 0 {
 			rangeArr := strings.Split(rangeStr, "-")
-			fmt.Println("未处理之前", rangeStr)
 			rangEnd, _ := strconv.Atoi(rangeArr[1])
 			if rangEnd >= fi.Size {
 				rangeStr = rangeStr[:strings.LastIndex(rangeStr, "-")+1]
 			}
 		}
 		//rangeStr = "bytes=0-" + strconv.Itoa(fi.Size)
-		fmt.Println(rangeStr)
-		fmt.Println("if-range", r.Header.Get("if-range"))
 		if r.Method != "HEAD" {
 			if strings.Index(r.URL.String(), "025.jpg") > 0 {
-				fmt.Println("025")
 			}
 			downloadUrl := aliyun.GetDownloadUrl(h.Config.Token, h.Config.DriveId, fi.FileId)
 			aliyun.GetFile(w, downloadUrl, h.Config.Token, rangeStr, r.Header.Get("if-range"))
 		}
 
-		fmt.Println("长度", fi.Size)
-		fmt.Println("range", r.Header.Get("range"))
 		if fi.Type == "folder" {
 			return http.StatusMethodNotAllowed, nil
 		}
@@ -361,7 +358,6 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 		//}
 	}
 
-	fmt.Println(r.ContentLength)
 	if r.ContentLength == 0 {
 		if reflect.DeepEqual(fi, model.ListModel{}) {
 			fi.FileId = "root"
@@ -381,8 +377,6 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 
 	//	aliyun.UploadFile(uploadUrl, h.Config.Token, data)
 	//	aliyun.UploadFileComplete(h.Config.Token, h.Config.DriveId, uploadId, fileId)
-	//	fmt.Println(reqPath)
-	//	fmt.Println(r.ContentLength)
 	//	release, status, err := h.confirmLocks(r, reqPath, "")
 	//	if err != nil {
 	//		return status, err
@@ -403,7 +397,6 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	//	fmt.Println(string(bts))
 	_, copyErr := io.Copy(f, r.Body)
 	//fif, statErr := f.Stat()
-	fmt.Println(fi)
 	closeErr := f.Close()
 	//	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
 	if copyErr != nil {
@@ -540,7 +533,7 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 	ctx := r.Context()
 
 	if r.Method == "MOVE" {
-		fmt.Println("dfddf")
+		fmt.Println("move")
 	}
 
 	if r.Method == "COPY" {
@@ -587,6 +580,17 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 }
 
 func (h *Handler) handleLock(w http.ResponseWriter, r *http.Request) (retStatus int, retErr error) {
+	userAgent := r.Header.Get("User-Agent")
+	if len(userAgent) > 0 && strings.Index(userAgent, "Darwin") > -1 {
+		//_macLockRequest = true
+		//
+		//String
+		//timeString = new
+		//Long(System.currentTimeMillis())
+		//.toString()
+		//_lockOwner = _userAgent.concat(timeString)
+		userAgent += strconv.FormatInt(time.Now().UnixMilli(), 10)
+	}
 	duration, err := parseTimeout(r.Header.Get("Timeout"))
 	if err != nil {
 		return http.StatusBadRequest, err
@@ -596,7 +600,7 @@ func (h *Handler) handleLock(w http.ResponseWriter, r *http.Request) (retStatus 
 		return status, err
 	}
 
-	ctx := r.Context()
+	//ctx := r.Context()
 	token, ld, now, created := "", LockDetails{}, time.Now(), false
 	if li == (lockInfo{}) {
 		// An empty lockInfo means to refresh the lock.
@@ -654,13 +658,17 @@ func (h *Handler) handleLock(w http.ResponseWriter, r *http.Request) (retStatus 
 		}()
 
 		// Create the resource if it didn't previously exist.
-		if _, err := h.FileSystem.Stat(ctx, reqPath); err != nil {
-			f, err := h.FileSystem.OpenFile(ctx, reqPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-			if err != nil {
-				// TODO: detect missing intermediate dirs and return http.StatusConflict?
-				return http.StatusInternalServerError, err
-			}
-			f.Close()
+		var fi model.ListModel
+		lastIndex := strings.LastIndex(reqPath, "/")
+		if lastIndex == -1 {
+			lastIndex = 0
+		}
+		if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+			strArr := strings.Split(reqPath[:lastIndex], "/")
+			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+		}
+		if reflect.DeepEqual(fi, model.ListModel{}) {
 			created = true
 		}
 
@@ -707,7 +715,6 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	var list model.FileListModel
 	var fi model.ListModel
-	fmt.Println(reqPath)
 	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
 		dirName := strings.TrimRight(reqPath, "/")
 		dirName = strings.TrimLeft(dirName, "/")

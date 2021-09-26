@@ -83,7 +83,6 @@ func Get(w http.ResponseWriter, url, token string, rangeStr string, ifRange stri
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("range", rangeStr)
 	req.Header.Add("if-range", ifRange)
-	fmt.Println(rangeStr)
 
 	res, err := client.Do(req)
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"go-aliyun/aliyun/model"
+	"go-aliyun-webdav/aliyun/model"
 	"net/http"
 	"os"
 	"strconv"
@@ -129,7 +129,7 @@ var liveProps = map[xml.Name]struct {
 		dir: true,
 	},
 	{Space: "DAV:", Local: "creationdate"}: {
-		findFn: nil,
+		findFn: findCreate,
 		dir:    false,
 	},
 	{Space: "DAV:", Local: "getcontentlanguage"}: {
@@ -409,6 +409,9 @@ func findContentLength(ctx context.Context, fs FileSystem, ls LockSystem, fi mod
 
 func findLastModified(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
 	return fi.UpdatedAt.UTC().Format(http.TimeFormat), nil
+}
+func findCreate(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
+	return fi.CreatedAt.UTC().Format(http.TimeFormat), nil
 }
 
 // ErrNotImplemented should be returned by optional interfaces if they

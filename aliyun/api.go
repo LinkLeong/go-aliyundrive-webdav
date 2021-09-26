@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tidwall/gjson"
-	"go-aliyun/aliyun/cache"
-	"go-aliyun/aliyun/model"
-	"go-aliyun/aliyun/net"
+	"go-aliyun-webdav/aliyun/cache"
+	"go-aliyun-webdav/aliyun/model"
+	"go-aliyun-webdav/aliyun/net"
 	"net/http"
 	"strconv"
 )
@@ -230,8 +230,7 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 	//return false
 }
 func UploadFile(url string, token string, data []byte) {
-	rs := net.Put(url, token, data)
-	fmt.Println(string(rs))
+	net.Put(url, token, data)
 }
 func UploadFileComplete(token string, driveId string, uploadId string, fileId string, parentId string) bool {
 	//	private String drive_id;
@@ -251,9 +250,7 @@ func UploadFileComplete(token string, driveId string, uploadId string, fileId st
 
 	return false
 }
-func GetDownloadUrl(token string, driveId string, fileId string) (string) {
-
-
+func GetDownloadUrl(token string, driveId string, fileId string) string {
 
 	postData := make(map[string]interface{})
 	postData["drive_id"] = driveId
@@ -261,8 +258,7 @@ func GetDownloadUrl(token string, driveId string, fileId string) (string) {
 
 	data, _ := json.Marshal(postData)
 
-
 	body := net.Post(model.APIFILEDOWNLOAD, token, data)
-	return gjson.GetBytes(body,"url").Str
+	return gjson.GetBytes(body, "url").Str
 
 }

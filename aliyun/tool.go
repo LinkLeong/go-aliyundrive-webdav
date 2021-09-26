@@ -13,7 +13,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	//需要判断参数里面的有效期
 	//默认截取长度10485760
 	//const DEFAULT int64 = 10485760
-	const DEFAULT int64 = 1048576
+	const DEFAULT int64 = 10485760
 	var count float64 = 1
 	var total int64 = 0
 	byteSize := DEFAULT
@@ -21,7 +21,12 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	if len(parentId) == 0 {
 		parentId = "root"
 	}
-	count = math.Ceil(float64(r.ContentLength) / float64(DEFAULT))
+	if r.ContentLength > 0 {
+		count = math.Ceil(float64(r.ContentLength) / float64(DEFAULT))
+	} else {
+		dataTemp, _ := io.ReadAll(r.Body)
+		r.ContentLength = int64(len(dataTemp))
+	}
 	uploadUrl, uploadId, fileId := UpdateFileFile(token, driveId, fileName, parentId, strconv.FormatInt(r.ContentLength, 10), int(count))
 	if len(uploadUrl) == 0 {
 		return

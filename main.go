@@ -4,11 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"go-aliyun/aliyun"
-	"go-aliyun/aliyun/cache"
-	"go-aliyun/aliyun/model"
-	"go-aliyun/webdav"
+	"go-aliyun-webdav/aliyun"
+	"go-aliyun-webdav/aliyun/cache"
+	"go-aliyun-webdav/aliyun/model"
+	"go-aliyun-webdav/webdav"
 	"net/http"
+	"os"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -18,15 +20,33 @@ func init() {
 }
 
 func main() {
-	var addr *string
+	var port *string
 	var path *string
 	var refreshToken *string
+	var user *string
+	var pwd *string
 	//
-	addr = flag.String("addr", "192.168.2.176:8085", "")
+	port = flag.String("addr", "8085", "默认8085")
 	path = flag.String("path", "./", "")
+	user = flag.String("user", "admin", "用户名")
+	pwd = flag.String("pwd", "123456", "密码")
 	//refreshToken = flag.String("rt", "a4d7e58c0f7949cb9c88670d9fb00a30", "refresh_token")
-	refreshToken = flag.String("rt", "61e9d623b0f147cb8a6e08add70f2b54", "refresh_token")
+	refreshToken = flag.String("rt", "", "refresh_token")
 	flag.Parse()
+
+	if len(*refreshToken) == 0 || len(os.Args) < 3 || os.Args[1] != "-rt" {
+		fmt.Println("rf为必填项,请输入refreshToken")
+		return
+	}
+	if len(os.Args) > 2 && os.Args[1] == "rt" {
+		*refreshToken = os.Args[2]
+	}
+	var address string
+	if runtime.GOOS == "windows" {
+		address = ":" + *port
+	} else {
+		address = "0.0.0.0:" + *port
+	}
 
 	//todo 判断
 
@@ -50,17 +70,17 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		// 获取用户名/密码
-		//	username, password, ok := req.BasicAuth()
-		//	if !ok {
-		//		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-		//		w.WriteHeader(http.StatusUnauthorized)
-		//		return
-		//	}
-		////	 验证用户名/密码
-		//	if username != "user" || password != "123456" {
-		//		http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
-		//		return
-		//	}
+		username, password, ok := req.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		//	 验证用户名/密码
+		if username != *user || password != *pwd {
+			http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+			return
+		}
 
 		// Add CORS headers before any operation so even on a 401 unauthorized status, CORS will work.
 
@@ -81,9 +101,7 @@ func main() {
 			}
 		}
 
-		fmt.Println(req.URL)
 		fs.ServeHTTP(w, req)
 	})
-
-	http.ListenAndServe(*addr, nil)
+	http.ListenAndServe(address, nil)
 }
