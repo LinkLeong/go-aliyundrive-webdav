@@ -24,8 +24,9 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	if r.ContentLength > 0 {
 		count = math.Ceil(float64(r.ContentLength) / float64(DEFAULT))
 	} else {
-		dataTemp, _ := io.ReadAll(r.Body)
-		r.ContentLength = int64(len(dataTemp))
+		//dataTemp, _ := io.ReadAll(r.Body)
+		//r.ContentLength = int64(len(dataTemp))
+		return
 	}
 	uploadUrl, uploadId, fileId := UpdateFileFile(token, driveId, fileName, parentId, strconv.FormatInt(r.ContentLength, 10), int(count))
 	if len(uploadUrl) == 0 {
