@@ -589,7 +589,7 @@ func (h *Handler) handleLock(w http.ResponseWriter, r *http.Request) (retStatus 
 		//Long(System.currentTimeMillis())
 		//.toString()
 		//_lockOwner = _userAgent.concat(timeString)
-		userAgent += strconv.FormatInt(time.Now().UnixMilli(), 10)
+		userAgent += strconv.FormatInt(time.Now().UnixNano()/1000000, 10)
 	}
 	duration, err := parseTimeout(r.Header.Get("Timeout"))
 	if err != nil {
