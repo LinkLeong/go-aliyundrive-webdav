@@ -19,6 +19,8 @@ func init() {
 	cache.Init()
 }
 
+var Version = "v1.0.3"
+
 func main() {
 	var port *string
 	var path *string
