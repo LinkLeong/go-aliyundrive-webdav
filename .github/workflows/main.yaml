@@ -33,7 +33,7 @@ jobs:
       - name: run
         run: ls
       - name: Update release
-        uses: johnwbyrd/update-release
+        uses: tubone24/update_release@v1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: ./build/*
