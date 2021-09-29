@@ -33,11 +33,12 @@ jobs:
       - name: run
         run: ls
       - name: Update release
-        uses: tubone24/update_release@v1.0
+        uses: meeDamian/github-release@2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: ./build/*
+          files: build
           tag: v1.30
+          name: ceshi
 
       #      - name: release publish
       #        run: docker run --rm --privileged -e CGO_ENABLED=1 -e GITHUB_TOKEN=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 -v /var/run/docker.sock:/var/run/docker.sock -v `pwd`:/go/src/github.com/a624669980/go-aliyun-webdav -v `pwd`/sysroot:/sysroot -w /go/src/github.com/a624669980/go-aliyun-webdav troian/golang-cross release --rm-dist
