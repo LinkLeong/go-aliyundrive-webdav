@@ -30,7 +30,8 @@ jobs:
           race: false
           ldflags: -s -w
           buildmode: default
-      run: ls
+      - name: run
+        run: ls
       - name: Update release
         uses: johnwbyrd/update-release@v1
         with:
