@@ -33,11 +33,11 @@ jobs:
       - name: run
         run: cd build && ls
       - name: mkdir
-        run: mkdir -p linux-arm64-casaos/casaos linux-amd64-casaos/casaos
+        run: mkdir -p build/linux-arm64-casaos/casaos build/linux-amd64-casaos/casaos
       - name: move
-        run: mv casaos-linux-amd64 ./linux-amd64-casaos/casaos/casaos && mv casaos-linux-arm64 ./linux-arm64-casaos/casaos/casaos
+        run: mv build/casaos-linux-amd64 .build/linux-amd64-casaos/casaos/casaos && mv build/casaos-linux-arm64 .build/linux-arm64-casaos/casaos/casaos
       - name: move
-        run: mv casaos-linux-amd64 ./linux-amd64-casaos/casaos/casaos && mv casaos-linux-arm64 ./linux-arm64-casaos/casaos/casaos
+        run: mv build/casaos-linux-amd64 .build/linux-amd64-casaos/casaos/casaos && mv build/casaos-linux-arm64 .build/linux-arm64-casaos/casaos/casaos
       - name: Update release
         uses: meeDamian/github-release@2.0
         with:
