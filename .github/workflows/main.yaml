@@ -50,8 +50,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           files: >
-            build/linux-amd64-casaos
-            build/linux-arm64-casaos
+            linux-amd64-casaos
+            linux-arm64-casaos
           tag: v1.30
           name: ceshi
           allow_override: true
