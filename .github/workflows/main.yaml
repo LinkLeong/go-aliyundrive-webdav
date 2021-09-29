@@ -17,8 +17,21 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           node-version: '1.16'
-      - name: release publish
-        run: docker run --rm --privileged -e CGO_ENABLED=1 -e GITHUB_TOKEN=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 -v /var/run/docker.sock:/var/run/docker.sock -v `pwd`:/go/src/github.com/a624669980/go-aliyun-webdav -v `pwd`/sysroot:/sysroot -w /go/src/github.com/a624669980/go-aliyun-webdav troian/golang-cross release --rm-dist
+      - name: Build with xgo
+        uses: crazy-max/ghaction-xgo@v1
+        with:
+          xgo_version: latest
+          go_version: 1.16
+          dest: build
+          prefix: myapp
+          targets: windows/386,windows/amd64,linux/386,linux/amd64,darwin/386,darwin/amd64
+          v: true
+          x: false
+          race: false
+          ldflags: -s -w
+          buildmode: default
+#      - name: release publish
+#        run: docker run --rm --privileged -e CGO_ENABLED=1 -e GITHUB_TOKEN=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 -v /var/run/docker.sock:/var/run/docker.sock -v `pwd`:/go/src/github.com/a624669980/go-aliyun-webdav -v `pwd`/sysroot:/sysroot -w /go/src/github.com/a624669980/go-aliyun-webdav troian/golang-cross release --rm-dist
 #      - name: Run GoReleaser
 #        uses: goreleaser/goreleaser-action@v2
 #        with:
