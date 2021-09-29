@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           node-version: '1.16'
+      - name: release publish
+        run: docker run --rm --privileged -e CGO_ENABLED=1 --env-file .release-env -v /var/run/docker.sock:/var/run/docker.sock -v `pwd`:/go/src/github.com/a624669980/go-aliyun-webdav -v `pwd`/sysroot:/sysroot -w /go/src/github.com/a624669980/go-aliyun-webdav troian/golang-cross release --rm-dist
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
