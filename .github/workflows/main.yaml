@@ -57,6 +57,7 @@ jobs:
             build/linux-arm64-casaos/linux-arm64-casaos.tar.gz
           tag: v1.30
           name: ceshi
+          gzip: false
           allow_override: true
 
       #      - name: release publish
