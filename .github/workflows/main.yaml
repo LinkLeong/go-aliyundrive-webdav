@@ -31,7 +31,7 @@ jobs:
           ldflags: -s -w
           buildmode: default
       - name: run
-        run: ls
+        run: cd build && ls
       - name: Update release
         uses: meeDamian/github-release@2.0
         with:
