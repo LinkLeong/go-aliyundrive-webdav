@@ -8,8 +8,8 @@ import (
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/webdav"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	//"gorm.io/driver/sqlite"
+	//"gorm.io/gorm"
 	"net/http"
 	"os"
 	"runtime"
@@ -27,36 +27,36 @@ type Task struct {
 	Id string `json:"id"`
 }
 
-func GetDb() *gorm.DB {
-	// 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
-	//dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?charset=utf8mb4&parseTime=True&loc=Local", m.User, m.PWD, m.IP, m.Port, m.DBName)
-	//db, err := gorm.Open(mysql2.Open(dsn), &gorm.Config{})
-	db, err := gorm.Open(sqlite.Open("./db/casaOS.db"), &gorm.Config{})
-	c, _ := db.DB()
-	c.SetMaxIdleConns(10)
-	c.SetMaxOpenConns(100)
-	c.SetConnMaxIdleTime(time.Second * 1000)
-	if err != nil {
-		fmt.Println("连接数据失败!")
-		panic("数据库连接失败")
-		return nil
-	}
-	err = db.AutoMigrate(&Task{})
-	if err != nil {
-		fmt.Println("检查和创建数据库出错", err)
-	}
-	return db
-}
+//func GetDb() *gorm.DB {
+//	// 参考 https://github.com/go-sql-driver/mysql#dsn-data-source-name 获取详情
+//	//dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?charset=utf8mb4&parseTime=True&loc=Local", m.User, m.PWD, m.IP, m.Port, m.DBName)
+//	//db, err := gorm.Open(mysql2.Open(dsn), &gorm.Config{})
+//	db, err := gorm.Open(sqlite.Open("./db/casaOS.db"), &gorm.Config{})
+//	c, _ := db.DB()
+//	c.SetMaxIdleConns(10)
+//	c.SetMaxOpenConns(100)
+//	c.SetConnMaxIdleTime(time.Second * 1000)
+//	if err != nil {
+//		fmt.Println("连接数据失败!")
+//		panic("数据库连接失败")
+//		return nil
+//	}
+//	err = db.AutoMigrate(&Task{})
+//	if err != nil {
+//		fmt.Println("检查和创建数据库出错", err)
+//	}
+//	return db
+//}
 
 func main() {
-	GetDb()
+	//GetDb()
 	var port *string
 	var path *string
 	var refreshToken *string
 	//var user *string
 	//var pwd *string
 	//
-	port = flag.String("addr", "8086", "默认8085")
+	port = flag.String("addr", "8085", "默认8085")
 	path = flag.String("path", "./", "")
 	//	user = flag.String("user", "admin", "用户名")
 	//	pwd = flag.String("pwd", "123456", "密码")
@@ -65,7 +65,7 @@ func main() {
 	flag.Parse()
 
 	if len(*refreshToken) == 0 || len(os.Args) < 3 || os.Args[1] != "-rt" {
-		fmt.Println("rf为必填项,请输入refreshToken")
+		fmt.Println("rt为必填项,请输入refreshToken")
 		return
 	}
 	if len(os.Args) > 2 && os.Args[1] == "rt" {
@@ -75,11 +75,11 @@ func main() {
 	if runtime.GOOS == "windows" {
 		address = ":" + *port
 	} else {
+
 		address = "0.0.0.0:" + *port
 	}
 
 	//todo 判断
-
 	refreshResult := aliyun.RefreshToken(*refreshToken)
 
 	config := model.Config{
