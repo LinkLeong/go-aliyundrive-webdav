@@ -48,7 +48,8 @@ jobs:
         uses: meeDamian/github-release@2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: build/
+          files: >
+            build/
           tag: v1.30
           name: ceshi
           allow_override: true
