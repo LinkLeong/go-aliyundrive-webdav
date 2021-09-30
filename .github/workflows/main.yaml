@@ -17,11 +17,12 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           node-version: '1.16'
-      - name: ceshi
+      - name: set env
         run: |
-          echo "temp=$(cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g')" >>$GITHUB_ENV
+          echo "VERSION=$(cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g')" >>$GITHUB_ENV
+          echo "BODY=$(cat types/system.go | grep BODY | awk '$2 == "BODY"{print $4}' | sed 's/"//g')" >>$GITHUB_ENV
       - name: show
-        run: echo "${{env.temp}}"
+        run: echo "${{ env.VERSION }}"
       #      - name: Build with xgo
       #        uses: crazy-max/ghaction-xgo@v1
       #        with:
