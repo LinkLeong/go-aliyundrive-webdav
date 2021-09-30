@@ -19,22 +19,23 @@ jobs:
           node-version: '1.16'
       - name: ceshi
         run: |
-           cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g' > $temp
+          temp = cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g'
+          echo "temp=$temp" >> $GITHUB_ENV
       - name: show
-        run: echo $temp
-#      - name: Build with xgo
-#        uses: crazy-max/ghaction-xgo@v1
-#        with:
-#          xgo_version: latest
-#          go_version: 1.16
-#          dest: build
-#          prefix: casaos
-#          targets: linux/amd64,linux/arm64
-#          v: true
-#          x: false
-#          race: false
-#          ldflags: -s -w
-#          buildmode: default
+        run: echo "${{env.temp}}"
+      #      - name: Build with xgo
+      #        uses: crazy-max/ghaction-xgo@v1
+      #        with:
+      #          xgo_version: latest
+      #          go_version: 1.16
+      #          dest: build
+      #          prefix: casaos
+      #          targets: linux/amd64,linux/arm64
+      #          v: true
+      #          x: false
+      #          race: false
+      #          ldflags: -s -w
+      #          buildmode: default
       - name: run
         run: cd build && ls
       - name: mkdir
