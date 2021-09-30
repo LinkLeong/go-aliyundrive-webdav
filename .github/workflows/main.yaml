@@ -69,7 +69,8 @@ jobs:
           name: v${{ env.VERSION }}
           gzip: false
           commitish: master
-          allow_override: true
+          allow_override: false
+          prerelease: true
 
 #      - name: release publish
 #        run: docker run --rm --privileged -e CGO_ENABLED=1 -e GITHUB_TOKEN=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 -v /var/run/docker.sock:/var/run/docker.sock -v `pwd`:/go/src/github.com/a624669980/go-aliyun-webdav -v `pwd`/sysroot:/sysroot -w /go/src/github.com/a624669980/go-aliyun-webdav troian/golang-cross release --rm-dist
