@@ -19,7 +19,7 @@ jobs:
           node-version: '1.16'
       - name: ceshi
         run: |
-          let temp = cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g'
+          let temp = $(cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g')
           echo "$temp"
           echo "temp=$temp" >> $GITHUB_ENV
       - name: show
