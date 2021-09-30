@@ -65,7 +65,7 @@ jobs:
             build/linux-arm64-casaos/linux-arm64-casaos.tar.gz
           tag: v${{ env.VERSION }}
           body: >
-            "${{ env.BODY }}"
+            ${{ env.BODY }}
           name: v${{ env.VERSION }}
           gzip: false
           commitish: master
