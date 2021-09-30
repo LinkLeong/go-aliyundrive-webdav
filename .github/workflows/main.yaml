@@ -22,7 +22,9 @@ jobs:
           echo "VERSION=$(cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g')" >>$GITHUB_ENV
           echo "BODY=$(cat types/system.go | grep BODY | awk '$2 == "BODY"{print $4}' | sed 's/"//g')" >>$GITHUB_ENV
       - name: show
-        run: echo "${{ env.VERSION }}"
+        run: |
+          echo "${{ env.VERSION }}"
+          echo "${{ env.BODY }}
       #      - name: Build with xgo
       #        uses: crazy-max/ghaction-xgo@v1
       #        with:
