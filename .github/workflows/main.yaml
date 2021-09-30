@@ -64,7 +64,7 @@ jobs:
             build/linux-amd64-casaos/linux-amd64-casaos.tar.gz
             build/linux-arm64-casaos/linux-arm64-casaos.tar.gz
           tag: v${{ env.VERSION }}
-          body: ${{ env.BODY }}
+          body: "${{ env.BODY }}"
           name: ceshi
           gzip: false
           commitish: master
