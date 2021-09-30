@@ -20,6 +20,7 @@ jobs:
       - name: ceshi
         run: |
           temp = cat types/system.go | grep CURRENTVERSION | awk '$2 == "CURRENTVERSION"{print $4}' | sed 's/"//g'
+          echo "$temp"
           echo "temp=$temp" >> $GITHUB_ENV
       - name: show
         run: echo "${{env.temp}}"
