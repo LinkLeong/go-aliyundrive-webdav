@@ -337,7 +337,7 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	if err != nil {
 		return status, err
 	}
-	if strings.Index(reqPath, ".DS_Store") > -1 {
+	if strings.Index(r.Header.Get("User-Agent"), "Darwin") > -1 && strings.Index(reqPath, "._") > -1 {
 		return status, err
 	}
 	lastIndex := strings.LastIndex(reqPath, "/")

@@ -97,7 +97,7 @@ func ReName(token string, driveId string, newName string, fileId string) bool {
 		fmt.Println(e)
 	}
 	cache.GoCache.Delete(m.ParentFileId)
-	fmt.Println(rs)
+	fmt.Println(string(rs))
 	return true
 }
 func MakeDir(token string, driveId string, name string, parentFileId string) bool {
@@ -244,7 +244,7 @@ func UploadFileComplete(token string, driveId string, uploadId string, fileId st
 	createData := `{"drive_id": "` + driveId + `","file_id": "` + fileId + `","upload_id":"` + uploadId + `"}`
 
 	rs := net.Post(model.APIFILECOMPLETE, token, []byte(createData))
-	fmt.Println(rs)
+	fmt.Println(string(rs))
 	//正确返回占星显示
 	//	}
 	cache.GoCache.Delete(parentId)
