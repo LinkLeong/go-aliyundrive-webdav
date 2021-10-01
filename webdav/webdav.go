@@ -337,6 +337,9 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	if err != nil {
 		return status, err
 	}
+	if strings.Index(reqPath, ".DS_Store") > -1 {
+		return status, err
+	}
 	lastIndex := strings.LastIndex(reqPath, "/")
 	fileName := reqPath[lastIndex+1:]
 	if lastIndex == -1 {

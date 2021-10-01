@@ -8,6 +8,7 @@ import (
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/webdav"
+
 	//"gorm.io/driver/sqlite"
 	//"gorm.io/gorm"
 	"net/http"
@@ -53,13 +54,13 @@ func main() {
 	var port *string
 	var path *string
 	var refreshToken *string
-	//var user *string
-	//var pwd *string
+	var user *string
+	var pwd *string
 	//
-	port = flag.String("addr", "8085", "默认8085")
+	port = flag.String("port", "8085", "默认8085")
 	path = flag.String("path", "./", "")
-	//	user = flag.String("user", "admin", "用户名")
-	//	pwd = flag.String("pwd", "123456", "密码")
+	user = flag.String("user", "admin", "用户名")
+	pwd = flag.String("pwd", "123456", "密码")
 	//refreshToken = flag.String("rt", "a4d7e58c0f7949cb9c88670d9fb00a30", "refresh_token")
 	refreshToken = flag.String("rt", "", "refresh_token")
 	flag.Parse()
@@ -100,17 +101,17 @@ func main() {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		// 获取用户名/密码
-		//username, password, ok := req.BasicAuth()
-		//if !ok {
-		//	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-		//	w.WriteHeader(http.StatusUnauthorized)
-		//	return
-		//}
-		////	 验证用户名/密码
-		//if username != *user || password != *pwd {
-		//	http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
-		//	return
-		//}
+		username, password, ok := req.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		//	 验证用户名/密码
+		if username != *user || password != *pwd {
+			http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+			return
+		}
 
 		// Add CORS headers before any operation so even on a 401 unauthorized status, CORS will work.
 

@@ -4,7 +4,7 @@ on:
     branches:
       - 'master'
     tags:
-      - '*'
+      - 'v*'
   pull_request:
 
 jobs:
@@ -14,52 +14,19 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
       - uses: actions/setup-go@v2
         with:
           node-version: '1.16'
-      - name: Build with xgo
-        uses: crazy-max/ghaction-xgo@v1
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
         with:
-          xgo_version: latest
-          go_version: 1.16
-          dest: build
-          prefix: casaos
-          targets: linux/amd64,linux/arm64
-          v: true
-          x: false
-          race: false
-          ldflags: -s -w
-          buildmode: default
-      - name: run
-        run: cd build && ls
-      - name: mkdir
-        run: |
-          ls
-          mkdir -p build/linux-arm64-casaos/casaos build/linux-amd64-casaos/casaos
-          cd build
-          ls
-      - name: move
-        run: |
-          ls
-          mv build/casaos-linux-amd64 build/linux-amd64-casaos/casaos/casaos && mv build/casaos-linux-arm64 build/linux-arm64-casaos/casaos/casaos
-          ls
-      - name: tar
-        run: |
-          cd build/linux-amd64-casaos && tar -czvf linux-amd64-casaos.tar.gz casaos/
-          cd ../../build/linux-arm64-casaos && tar -czvf linux-arm64-casaos.tar.gz casaos/
-          ls
-      - name: Update release
-        uses: meeDamian/github-release@2.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: >
-            build/linux-amd64-casaos/linux-amd64-casaos.tar.gz
-            build/linux-arm64-casaos/linux-arm64-casaos.tar.gz
-          tag: v1.31
-          name: ceshi
-          gzip: false
-          commitish: master
-          allow_override: true
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
 
       #      - name: release publish
       #        run: docker run --rm --privileged -e CGO_ENABLED=1 -e GITHUB_TOKEN=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 -v /var/run/docker.sock:/var/run/docker.sock -v `pwd`:/go/src/github.com/a624669980/go-aliyun-webdav -v `pwd`/sysroot:/sysroot -w /go/src/github.com/a624669980/go-aliyun-webdav troian/golang-cross release --rm-dist
