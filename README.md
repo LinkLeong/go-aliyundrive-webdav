@@ -1,4 +1,4 @@
-# webdav-aliyundriver
+# 介绍
 本项目实现了阿里云盘的webdav协议，只需要简单的配置一下，就可以让阿里云盘变身为webdav协议的文件服务器。
 基于此，你可以把阿里云盘挂载为Windows、Linux、Mac系统的磁盘，可以通过NAS系统做文件管理或文件同步，更多玩法等你挖掘
 
@@ -9,7 +9,7 @@
 [点击下载](https://github.com/LinkLeong/go-aliyun-webdav)
 > 建议自己下载源码编译，以获得最新代码
 ```bash
- --rt="your refreshToken"
+webdav --rt="your refreshToken"
 ```
 
 # 参数说明
