@@ -7,9 +7,9 @@
 支持refreshToken登录方式，具体看参数说明
 ## 运行
 [点击下载](https://github.com/LinkLeong/go-aliyun-webdav)
-> 建议自己下载源码编译，以获得最新代码
+> 选择对应的版本进行下载,进入到解压目录执行
 ```bash
-webdav --rt="your refreshToken"
+./webdav --rt="your refreshToken"
 ```
 
 # 参数说明
