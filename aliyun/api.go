@@ -3,12 +3,13 @@ package aliyun
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/aliyun/net"
 	"net/http"
 	"strconv"
+
+	"github.com/tidwall/gjson"
 )
 
 func GetList(token string, driveId string, parentFileId string) (model.FileListModel, error) {
@@ -155,9 +156,9 @@ func UpdateFileFolder(token string, driveId string, fileName string, parentFileI
 	//	"resource": "file"
 	//	}
 	createData := `{"drive_id": "` + driveId + `","parent_file_id": "` + parentFileId + `","name": "` + fileName + `","check_name_mode": "refuse","type": "folder"}`
-
-	rs := net.Post(model.APIFILEUPLOAD, token, []byte(createData))
-	fmt.Println(rs)
+	net.Post(model.APIFILEUPLOAD, token, []byte(createData))
+	// rs := net.Post(model.APIFILEUPLOAD, token, []byte(createData))
+	// fmt.Println(string(rs))
 	//正确返回占星显示
 	//	{"parent_file_id":"60794ad941ee2d8d24f843b7a0ffd80279927dfc","type":"folder","file_id":"613caeb4d5b1ba9fb4604d4aa5aef2b408ab3121","domain_id":"bj29","drive_id":"1662258","file_name":"1SDSDSD.png","encrypt_mode":"none"}
 	//
