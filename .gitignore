@@ -2,3 +2,4 @@
 dist/
 .vscode/
 .idea/
+__debug_bin.exe
