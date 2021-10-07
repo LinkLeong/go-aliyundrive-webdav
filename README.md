@@ -9,18 +9,18 @@
 [点击下载](https://github.com/LinkLeong/go-aliyun-webdav)
 > 建议自己下载源码编译，以获得最新代码
 ```bash
- --rt="your refreshToken"
+ -rt="your refreshToken"
 ```
 
 # 参数说明
 ```bash
---rt
+-rt
     阿里云盘的refreshToken，获取方式见下文
---port
+-port
     非必填，服务器端口号，默认为8085
---user=admin
+-user
     WebDav账户，默认admin
---pwd=123456
+-pwd
     WebDav密码，默认123456
     
 ```
