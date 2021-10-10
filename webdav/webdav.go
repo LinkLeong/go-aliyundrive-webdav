@@ -860,13 +860,19 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			return err
 		}
 		href := path.Join(h.Prefix, parent.Name)
-		if href != "/" && fi.Type == "folder" {
-			href += "/"
+		if parent.ParentFileId == "root" {
+			href = "/" + parent.Name
+		} else {
+			href, _ = aliyun.GetFilePath(h.Config.Token, h.Config.DriveId, parent.ParentFileId, parent.FileId, parent.Type)
+			href += parent.Name
+			if parent.Type == "folder" {
+				href += "/"
+			}
 		}
 		return mw.write(makePropstatResponse(href, pstats))
 	}
-
-	walkErr := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId)
+	userAgent := r.Header.Get("User-Agent")
+	walkErr := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId, userAgent)
 	closeErr := mw.close()
 	if walkErr != nil {
 		return http.StatusInternalServerError, walkErr

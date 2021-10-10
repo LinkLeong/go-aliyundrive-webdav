@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/xml"
 	"fmt"
+	"go-aliyun-webdav/aliyun"
 	"go-aliyun-webdav/aliyun/model"
 	"io"
 	"net/http"
@@ -759,7 +760,7 @@ type WalkFunc func(parent model.ListModel, info model.FileListModel, err error) 
 // Allowed values for depth are 0, 1 or infiniteDepth. For each visited node,
 // walkFS calls walkFn. If a visited file system node is a directory and
 // walkFn returns filepath.SkipDir, walkFS will skip traversal of this node.
-func walkFS(ctx context.Context, fs FileSystem, depth int, parent model.ListModel, info model.FileListModel, walkFn WalkFunc, token, driver string) error {
+func walkFS(ctx context.Context, fs FileSystem, depth int, parent model.ListModel, info model.FileListModel, walkFn WalkFunc, token, driver, userAgent string) error {
 	// This implementation is based on Walk's code in the standard path/filepath package.
 	err := walkFn(parent, info, nil)
 	if err != nil {
@@ -781,12 +782,18 @@ func walkFS(ctx context.Context, fs FileSystem, depth int, parent model.ListMode
 				return err
 			}
 		} else {
-			err = walkFS(ctx, fs, depth, fileInfo, fileList, walkFn, token, driver)
-			if err != nil {
-				if fileInfo.Type != "folder" || err != filepath.SkipDir {
-					return err
+			if fileInfo.Type == "folder" && !strings.Contains(userAgent, "RaiDrive") {
+				info, _ := aliyun.GetList(token, driver, fileInfo.FileId)
+				walkFS(ctx, fs, depth, fileInfo, info, walkFn, token, driver, userAgent)
+			} else {
+				err = walkFS(ctx, fs, depth, fileInfo, fileList, walkFn, token, driver, userAgent)
+				if err != nil {
+					if fileInfo.Type != "folder" || err != filepath.SkipDir {
+						return err
+					}
 				}
 			}
+
 		}
 	}
 	return nil

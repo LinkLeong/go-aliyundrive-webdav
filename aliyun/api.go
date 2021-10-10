@@ -57,6 +57,49 @@ func GetList(token string, driveId string, parentFileId string) (model.FileListM
 	return list, nil
 }
 
+func GetFilePath(token string, driveId string, parentFileId string, fileId string, typeStr string) (string, error) {
+
+	if len(parentFileId) == 0 {
+		parentFileId = "root"
+	}
+	path := "/"
+	var list model.ListFilePath
+	if result, ok := cache.GoCache.Get(parentFileId + "path"); ok {
+		path, ok = result.(string)
+		if ok {
+			return path, nil
+		}
+	}
+
+	postData := make(map[string]interface{})
+	postData["drive_id"] = driveId
+	postData["file_id"] = fileId
+
+	data, err := json.Marshal(postData)
+	if err != nil {
+		fmt.Println("获取列表转义数据失败", err)
+		return "/", err
+	}
+
+	body := net.Post(model.APIFILEPATH, token, data)
+
+	e := json.Unmarshal(body, &list)
+	if e != nil {
+		fmt.Println(e)
+	}
+	minNum := 0
+	if typeStr == "folder" {
+		minNum = 1
+	}
+	for i := len(list.Items); i > minNum; i-- {
+		path += list.Items[i-1].Name + "/"
+	}
+
+	cache.GoCache.SetDefault(parentFileId+"path", path)
+
+	return path, nil
+}
+
 func GetFile(w http.ResponseWriter, url string, token string, rangeStr string, ifRange string) bool {
 
 	body := net.Get(w, url, token, rangeStr, ifRange)
