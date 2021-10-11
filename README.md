@@ -33,6 +33,9 @@
 | Windows原生 | 可用 | 有点小问题 | 不建议，适配有点问题，上传报错 |
 | RaiDrive | 可用 | 可用 | Windows平台下建议用这个 |
 
+# openwrt ui
+[项目路径](https://github.com/jerrykuku/luci-app-go-aliyundrive-webdav)
+
 
 # 浏览器获取refreshToken方式
 1. 先通过浏览器（建议chrome）打开阿里云盘官网并登录：https://www.aliyundrive.com/drive/
@@ -52,6 +55,7 @@
 8. 文件在线编辑
 9.  Webdav下的流媒体播放等功能
 ## 已知问题
+
 1. 没有做文件sha1校验，不保证上传文件的100%准确性（一般场景下，是没问题的）
 2. 通过文件名和文件大小判断是否重复。也就是说如果一个文件即使发生了更新，但其大小没有任何改变，是不会自动上传的
 3. 不支持文件名包含 `/` 字符 
