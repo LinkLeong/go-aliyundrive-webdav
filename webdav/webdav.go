@@ -869,6 +869,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 				href += "/"
 			}
 		}
+
 		return mw.write(makePropstatResponse(href, pstats))
 	}
 	userAgent := r.Header.Get("User-Agent")

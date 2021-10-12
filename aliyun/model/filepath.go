@@ -2,6 +2,7 @@ package model
 
 type FilePath struct {
 	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
 	// 	created_at: "2021-09-06T07:12:29.103Z"
 	// domain_id: "bj29"
 	// drive_id: "1662258"

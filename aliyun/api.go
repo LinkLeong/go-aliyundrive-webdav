@@ -92,7 +92,9 @@ func GetFilePath(token string, driveId string, parentFileId string, fileId strin
 		minNum = 1
 	}
 	for i := len(list.Items); i > minNum; i-- {
-		path += list.Items[i-1].Name + "/"
+		if list.Items[i-1].Type == "folder" {
+			path += list.Items[i-1].Name + "/"
+		}
 	}
 
 	cache.GoCache.SetDefault(parentFileId+"path", path)
