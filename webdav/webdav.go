@@ -835,7 +835,9 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 
 	walkFn := func(parent model.ListModel, info model.FileListModel, err error) error {
 		if reflect.DeepEqual(parent, model.ListModel{}) {
-			return nil
+			fmt.Print("dddd")
+			parent.Type = "folder"
+			parent.ParentFileId = "root"
 		}
 		if err != nil {
 			return err
@@ -873,7 +875,8 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		return mw.write(makePropstatResponse(href, pstats))
 	}
 	userAgent := r.Header.Get("User-Agent")
-	walkErr := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId, userAgent)
+	cheng := 1
+	walkErr := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId, userAgent, cheng)
 	closeErr := mw.close()
 	if walkErr != nil {
 		return http.StatusInternalServerError, walkErr
