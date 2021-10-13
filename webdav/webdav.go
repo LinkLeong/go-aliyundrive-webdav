@@ -835,7 +835,6 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 
 	walkFn := func(parent model.ListModel, info model.FileListModel, err error) error {
 		if reflect.DeepEqual(parent, model.ListModel{}) {
-			fmt.Print("dddd")
 			parent.Type = "folder"
 			parent.ParentFileId = "root"
 		}
