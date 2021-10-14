@@ -15,6 +15,7 @@ const (
 	APIFILEUPLOADFILE  = APIBASE + "/v2/file/create_with_proof" //"/v2/file/create"
 	APIFILECOMPLETE    = APIBASE + "/v2/file/complete"
 	APIFILEDOWNLOAD    = APIBASE + "/v2/file/get_download_url"
+	APITOTLESIZE       = APIBASE + "/v2/databox/get_personal_info"
 )
 
 type Config struct {

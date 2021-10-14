@@ -308,3 +308,13 @@ func GetDownloadUrl(token string, driveId string, fileId string) string {
 	return gjson.GetBytes(body, "url").Str
 
 }
+func GetBoxSize(token string) (string, string) {
+
+	postData := make(map[string]interface{})
+
+	data, _ := json.Marshal(postData)
+
+	body := net.Post(model.APITOTLESIZE, token, data)
+	return gjson.GetBytes(body, "personal_space_info.total_size").String(), gjson.GetBytes(body, "personal_space_info.used_size").String()
+
+}

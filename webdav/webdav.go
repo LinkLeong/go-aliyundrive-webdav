@@ -12,6 +12,7 @@ import (
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"io"
+	"io/ioutil"
 	"reflect"
 	"strconv"
 
@@ -715,6 +716,17 @@ func (h *Handler) handleUnlock(w http.ResponseWriter, r *http.Request) (status i
 }
 
 func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status int, err error) {
+	if r.ContentLength > 0 {
+		available, _ := ioutil.ReadAll(r.Body)
+		if strings.Contains(string(available), "quota-available-bytes") {
+			totle, used := aliyun.GetBoxSize(h.Config.Token)
+			to, _ := strconv.ParseInt(string(totle), 10, 64)
+			us, _ := strconv.ParseInt(string(used), 10, 64)
+			w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?><D:multistatus xmlns:D="DAV:"><D:response><D:href>/</D:href><D:propstat><D:prop><D:quota-available-bytes>` + strconv.FormatInt(to-us, 10) + `</D:quota-available-bytes><D:quota-used-bytes>` + used + `</D:quota-used-bytes></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>
+			</D:multistatus>`))
+			return 0, nil
+		}
+	}
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	var list model.FileListModel
 	var fi model.ListModel
