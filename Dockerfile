@@ -14,4 +14,4 @@ RUN apk add --no-cache tzdata curl
 COPY --from=builder /build/app /usr/bin/go-aliyundriver-webdav
 RUN chmod +x /usr/bin/go-aliyundriver-webdav
 VOLUME /data
-ENTRYPOINT ["/usr/bin/go-aliyundriver-webdav"]
+ENTRYPOINT ["/usr/bin/go-aliyundrive-webdav"]
