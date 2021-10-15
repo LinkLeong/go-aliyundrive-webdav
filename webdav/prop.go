@@ -136,14 +136,14 @@ var liveProps = map[xml.Name]struct {
 		findFn: nil,
 		dir:    false,
 	},
-	{Space: "DAV:", Local: "quota-available-bytes"}: {
-		findFn: quota,
-		dir:    true,
-	},
-	{Space: "DAV:", Local: "quota-used-bytes"}: {
-		findFn: quotaU,
-		dir:    true,
-	},
+	// {Space: "DAV:", Local: "quota-available-bytes"}: {
+	// 	findFn: quota,
+	// 	dir:    true,
+	// },
+	// {Space: "DAV:", Local: "quota-used-bytes"}: {
+	// 	findFn: quotaU,
+	// 	dir:    true,
+	// },
 	{Space: "DAV:", Local: "getcontenttype"}: {
 		findFn: findContentType,
 		dir:    false,
@@ -421,18 +421,19 @@ func findLastModified(ctx context.Context, fs FileSystem, ls LockSystem, fi mode
 func findCreate(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
 	return fi.CreatedAt.UTC().Format(http.TimeFormat), nil
 }
-func quota(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
-	if fi.Name == "" {
-		return "1056194496917", nil
-	}
-	return "", nil
-}
-func quotaU(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
-	if fi.Name == "" {
-		return "60497000043", nil
-	}
-	return "", nil
-}
+
+// func quota(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
+// 	if fi.Name == "" {
+// 		return "1056194496917", nil
+// 	}
+// 	return "", nil
+// }
+// func quotaU(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
+// 	if fi.Name == "" {
+// 		return "60497000043", nil
+// 	}
+// 	return "", nil
+// }
 
 // ErrNotImplemented should be returned by optional interfaces if they
 // want the original implementation to be used.
