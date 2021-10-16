@@ -537,7 +537,7 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 	ctx := r.Context()
 
 	if r.Method == "MOVE" {
-		fmt.Println("move")
+		//fmt.Println("move")
 	}
 
 	if r.Method == "COPY" {
@@ -742,7 +742,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	} else if len(reqPath) == 0 {
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		if err != nil {
-			fmt.Println("获取列表失败")
+			//fmt.Println("获取列表失败")
 		}
 	} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath, "/")
