@@ -35,15 +35,23 @@ func main() {
 	var refreshToken *string
 	var user *string
 	var pwd *string
+	var versin *bool
+	var log *bool
 	//
 	port = flag.String("port", "8085", "默认8085")
 	path = flag.String("path", "./", "")
 	user = flag.String("user", "admin", "用户名")
 	pwd = flag.String("pwd", "123456", "密码")
+	versin = flag.Bool("V", false, "显示版本")
+	log = flag.Bool("v", false, "是否显示日志(默认不显示)")
 	//refreshToken = flag.String("rt", "a4d7e58c0f7949cb9c88670d9fb00a30", "refresh_token")
 	refreshToken = flag.String("rt", "", "refresh_token")
 	flag.Parse()
 
+	if *versin {
+		fmt.Println("v1.0.9")
+		return
+	}
 	if len(*refreshToken) == 0 || len(os.Args) < 3 || os.Args[1] != "-rt" {
 		fmt.Println("rt为必填项,请输入refreshToken")
 		return
@@ -110,8 +118,10 @@ func main() {
 				}
 			}
 		}
-		fmt.Println(req.URL)
-		fmt.Println(req.Method)
+		if *log {
+			fmt.Println(req.URL)
+			fmt.Println(req.Method)
+		}
 		fs.ServeHTTP(w, req)
 	})
 	http.ListenAndServe(address, nil)
