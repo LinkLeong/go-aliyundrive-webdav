@@ -15,7 +15,7 @@ type ListModel struct {
 	MimeType      string    `json:"mime_type"`
 	MimeExtension string    `json:"mime_extension"`
 	Hidden        bool      `json:"hidden"`
-	Size          int       `json:"size"`
+	Size          int64     `json:"size"`
 	Category      string    `json:"category"`
 	DownloadUrl   string    `json:"download_url"`
 	Url           string    `json:"url"`

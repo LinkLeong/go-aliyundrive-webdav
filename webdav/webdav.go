@@ -222,7 +222,7 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 
 		if len(rangeStr) > 0 && strings.LastIndex(rangeStr, "-") > 0 {
 			rangeArr := strings.Split(rangeStr, "-")
-			rangEnd, _ := strconv.Atoi(rangeArr[1])
+			rangEnd, _ := strconv.ParseInt(rangeArr[1], 10, 64)
 			if rangEnd >= fi.Size {
 				rangeStr = rangeStr[:strings.LastIndex(rangeStr, "-")+1]
 			}

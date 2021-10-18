@@ -412,7 +412,7 @@ func findDisplayName(ctx context.Context, fs FileSystem, ls LockSystem, fi model
 }
 
 func findContentLength(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
-	return strconv.Itoa(fi.Size), nil
+	return strconv.FormatInt(fi.Size, 10), nil
 }
 
 func findLastModified(ctx context.Context, fs FileSystem, ls LockSystem, fi model.ListModel) (string, error) {
