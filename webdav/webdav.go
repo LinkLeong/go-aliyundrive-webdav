@@ -726,17 +726,19 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			</D:multistatus>`))
 			return 0, nil
 		}
+		//fmt.Println(string(available))
 	}
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	var list model.FileListModel
 	var fi model.ListModel
-	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
+	fmt.Println(reqPath)
+	if reqPath == "markdown/" || (len(reqPath) > 0 && strings.HasSuffix(reqPath, "/")) {
 		dirName := strings.TrimRight(reqPath, "/")
 		dirName = strings.TrimLeft(dirName, "/")
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 
 		strArr := strings.Split(dirName, "/")
-
+		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 		list, _ = findList(strArr, h.Config.Token, h.Config.DriveId)
 
 	} else if len(reqPath) == 0 {
@@ -745,6 +747,9 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			//fmt.Println("获取列表失败")
 		}
 	} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+		if reqPath == "markdown" {
+			fmt.Print("markwo")
+		}
 		strArr := strings.Split(reqPath, "/")
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
