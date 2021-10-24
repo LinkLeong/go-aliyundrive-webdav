@@ -22,7 +22,7 @@ func init() {
 	cache.Init()
 }
 
-var Version = "v1.0.3"
+var Version = "v1.0.12"
 
 type Task struct {
 	Id string `json:"id"`
@@ -49,7 +49,7 @@ func main() {
 	flag.Parse()
 
 	if *versin {
-		fmt.Println("v1.0.9")
+		fmt.Println(Version)
 		return
 	}
 	if len(*refreshToken) == 0 || len(os.Args) < 3 || os.Args[1] != "-rt" {
