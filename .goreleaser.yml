@@ -3,6 +3,7 @@ project_name: webdav
 # Make sure to check the documentation at https://goreleaser.com
 builds:
  - env:
+     - CGO_ENABLED=0
    goos:
      - linux
      - windows
