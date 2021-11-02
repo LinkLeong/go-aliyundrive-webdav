@@ -29,8 +29,8 @@ func GetList(token string, driveId string, parentFileId string) (model.FileListM
 	postData := make(map[string]interface{})
 	postData["drive_id"] = driveId
 	postData["parent_file_id"] = parentFileId
-	postData["limit"] = 100
-	postData["all"] = true
+	postData["limit"] = 200
+	postData["all"] = false
 	postData["url_expire_sec"] = 1600
 	postData["image_thumbnail_process"] = "image/resize,w_400/format,jpeg"
 	postData["image_url_process"] = "image/resize,w_1920/format,jpeg"
