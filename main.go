@@ -22,7 +22,7 @@ func init() {
 	cache.Init()
 }
 
-var Version = "v1.0.14"
+var Version = "v1.0.15"
 
 type Task struct {
 	Id string `json:"id"`
@@ -52,7 +52,7 @@ func main() {
 		fmt.Println(Version)
 		return
 	}
-	if len(*refreshToken) == 0 || len(os.Args) < 3 || os.Args[1] != "-rt" {
+	if len(*refreshToken) == 0 {
 		fmt.Println("rt为必填项,请输入refreshToken")
 		return
 	}
