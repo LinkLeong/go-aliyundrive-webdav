@@ -10,12 +10,15 @@
 > 选择对应的版本进行下载,进入到解压目录执行
 ```bash
 ./webdav -rt="your refreshToken"
+# 或者
+echo "your refreshToken" > /path/to/save/refreshToken
+./webdav -rt /path/to/save/refreshToken
 ```
 
 # 参数说明
 ```bash
 -rt
-    阿里云盘的refreshToken，获取方式见下文
+    阿里云盘的refreshToken，获取方式见下文。或者包含refreshToken的文件路径。
 -port
     非必填，服务器端口号，默认为8085
 -user

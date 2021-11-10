@@ -3,6 +3,8 @@ package aliyun
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"io/ioutil"
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/aliyun/net"
@@ -111,6 +113,14 @@ func GetFile(w http.ResponseWriter, url string, token string, rangeStr string, i
 }
 
 func RefreshToken(refreshToken string) model.RefreshTokenModel {
+	path := refreshToken
+	if _, err := os.Stat(path); err == nil {
+		buf, _ := ioutil.ReadFile(path)
+		refreshToken = string(buf)
+		if(len(refreshToken) >= 32){
+			refreshToken = refreshToken[:32] // refreshToken is only 32 bit?? FIXME
+		}
+	}
 	rs := net.Post(model.APIREFRESHTOKENURL, "", []byte(`{"refresh_token":"`+refreshToken+`"}`))
 	var refresh model.RefreshTokenModel
 	if len(rs) > 0 {
@@ -121,6 +131,13 @@ func RefreshToken(refreshToken string) model.RefreshTokenModel {
 		}
 	} else {
 		fmt.Println("刷新token失败")
+	}
+
+	if _, err := os.Stat(path); err == nil {
+		if(refreshToken != refresh.RefreshToken){
+			content := []byte(refresh.RefreshToken)
+			ioutil.WriteFile(path, content, 0600)
+		}
 	}
 	return refresh
 
