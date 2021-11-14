@@ -10,6 +10,7 @@ builds:
      - darwin
      - freebsd
      - openbsd
+     - netbsd
    goarch:
      - amd64
      - 386
@@ -24,9 +25,23 @@ builds:
        goarch: 386
      - goos: freebsd
        goarch: arm
+     - goos: openbsd
+       goarch: arm
+       goarm: 6
 archives:
   - name_template: "{{.Os}}-{{.Arch}}{{if .Arm}}v{{.Arm}}{{end}}-{{ .ProjectName }}"
     format: tar.gz
     format_overrides:
       - goos: windows
         format: zip
+    replacements:
+      amd64: 64-bit
+      386: 32-bit
+      arm: ARM
+      arm64: ARM64
+      darwin: macOS
+      linux: Linux
+      windows: Windows
+      openbsd: OpenBSD
+      netbsd: NetBSD
+      freebsd: FreeBSD
