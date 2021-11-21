@@ -516,8 +516,10 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 
 		if dstIndex == -1 {
 			dstIndex = 0
+		} else {
+			dstIndex += 1
 		}
-		aliyun.ReName(h.Config.Token, h.Config.DriveId, dst[dstIndex+1:], fi.FileId)
+		aliyun.ReName(h.Config.Token, h.Config.DriveId, dst[dstIndex:], fi.FileId)
 		return http.StatusNoContent, nil
 	}
 
@@ -732,7 +734,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	var list model.FileListModel
 	var fi model.ListModel
 	fmt.Println(reqPath)
-	if reqPath == "markdown/" || (len(reqPath) > 0 && strings.HasSuffix(reqPath, "/")) {
+	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
 		dirName := strings.TrimRight(reqPath, "/")
 		dirName = strings.TrimLeft(dirName, "/")
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
@@ -747,9 +749,6 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			//fmt.Println("获取列表失败")
 		}
 	} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
-		if reqPath == "markdown" {
-			fmt.Print("markwo")
-		}
 		strArr := strings.Split(reqPath, "/")
 		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
@@ -960,17 +959,18 @@ func findUrl(strArr []string, token, driveId string, list model.FileListModel) (
 
 func findList(strArr []string, token, driveId string) (model.FileListModel, error) {
 	var list model.FileListModel
+	var listm model.FileListModel
 	list, _ = aliyun.GetList(token, driveId, "")
 	for _, a := range strArr {
 		for _, v := range list.Items {
 			if v.Name == a {
-				list, _ = aliyun.GetList(token, driveId, v.FileId)
+				listm, _ = aliyun.GetList(token, driveId, v.FileId)
 				break
 			}
 		}
 	}
 
-	return list, nil
+	return listm, errors.New("未找到数据")
 }
 
 func makePropstatResponse(href string, pstats []Propstat) *response {

@@ -43,11 +43,12 @@ func main() {
 	user = flag.String("user", "admin", "用户名")
 	pwd = flag.String("pwd", "123456", "密码")
 	versin = flag.Bool("V", false, "显示版本")
-	log = flag.Bool("v", false, "是否显示日志(默认不显示)")
-	//refreshToken = flag.String("rt", "a4d7e58c0f7949cb9c88670d9fb00a30", "refresh_token")
-	refreshToken = flag.String("rt", "", "refresh_token")
+	//log = flag.Bool("v", false, "是否显示日志(默认不显示)")
+	refreshToken = flag.String("rt", "155f8c031dcb437a8f7c32a1ae63b60e", "refresh_token")
+	log = flag.Bool("v", true, "是否显示日志(默认不显示)")
+	//refreshToken = flag.String("rt", "", "refresh_token")
 	flag.Parse()
-
+	*refreshToken = "155f8c031dcb437a8f7c32a1ae63b60e"
 	if *versin {
 		fmt.Println(Version)
 		return
