@@ -734,6 +734,10 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	var list model.FileListModel
 	var fi model.ListModel
 	fmt.Println(reqPath)
+	if strings.Contains(reqPath, "1111") {
+		fmt.Println("dddd")
+	}
+	var unfindListErr error
 	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
 		dirName := strings.TrimRight(reqPath, "/")
 		dirName = strings.TrimLeft(dirName, "/")
@@ -741,7 +745,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 
 		strArr := strings.Split(dirName, "/")
 		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-		list, _ = findList(strArr, h.Config.Token, h.Config.DriveId)
+		list, unfindListErr = findList(strArr, h.Config.Token, h.Config.DriveId)
 
 	} else if len(reqPath) == 0 {
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
@@ -760,7 +764,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	ctx := r.Context()
 	if (err != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" && strings.Index(reqPath, "test.png") == -1 {
 		//新建或修改名称的时候需要判断是否已存在
-		if len(list.Items) == 0 {
+		if len(list.Items) == 0 || unfindListErr != nil {
 			return http.StatusNotFound, err
 		}
 
@@ -959,18 +963,23 @@ func findUrl(strArr []string, token, driveId string, list model.FileListModel) (
 
 func findList(strArr []string, token, driveId string) (model.FileListModel, error) {
 	var list model.FileListModel
-	var listm model.FileListModel
+	var err error
+	err = errors.New("未找到数据")
 	list, _ = aliyun.GetList(token, driveId, "")
+	num := 0
 	for _, a := range strArr {
 		for _, v := range list.Items {
 			if v.Name == a {
-				listm, _ = aliyun.GetList(token, driveId, v.FileId)
+				list, _ = aliyun.GetList(token, driveId, v.FileId)
+				num += 1
 				break
 			}
 		}
 	}
-
-	return listm, errors.New("未找到数据")
+	if num == len(strArr) {
+		err = nil
+	}
+	return list, err
 }
 
 func makePropstatResponse(href string, pstats []Propstat) *response {

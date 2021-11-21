@@ -29,6 +29,9 @@ echo "your refreshToken" > /path/to/save/refreshToken
     是否显示日志，默认不显示
 -V
     查看版本号
+-crt
+    检查refreshToken是否过期
+    
     
 ```
 

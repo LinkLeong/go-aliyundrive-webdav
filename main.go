@@ -8,6 +8,7 @@ import (
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/webdav"
+	"reflect"
 
 	//"gorm.io/driver/sqlite"
 	//"gorm.io/gorm"
@@ -22,7 +23,7 @@ func init() {
 	cache.Init()
 }
 
-var Version = "v1.0.18"
+var Version = "v1.0.19"
 
 type Task struct {
 	Id string `json:"id"`
@@ -37,6 +38,7 @@ func main() {
 	var pwd *string
 	var versin *bool
 	var log *bool
+	var check *string
 	//
 	port = flag.String("port", "8085", "默认8085")
 	path = flag.String("path", "./", "")
@@ -44,14 +46,28 @@ func main() {
 	pwd = flag.String("pwd", "123456", "密码")
 	versin = flag.Bool("V", false, "显示版本")
 	log = flag.Bool("v", false, "是否显示日志(默认不显示)")
-	//refreshToken = flag.String("rt", "155f8c031dcb437a8f7c32a1ae63b60e", "refresh_token")
 	//log = flag.Bool("v", true, "是否显示日志(默认不显示)")
 	refreshToken = flag.String("rt", "", "refresh_token")
+
+	check = flag.String("crt", "", "检查refreshToken是否过期")
+
 	flag.Parse()
 	if *versin {
 		fmt.Println(Version)
 		return
 	}
+
+	if len(*check) > 0 {
+		refreshResult := aliyun.RefreshToken(*check)
+		if reflect.DeepEqual(refreshResult, model.RefreshTokenModel{}) {
+
+			fmt.Println("refreshToken已过期")
+		} else {
+			fmt.Println("refreshToken可以使用")
+		}
+		return
+	}
+
 	if len(*refreshToken) == 0 {
 		fmt.Println("rt为必填项,请输入refreshToken")
 		return
@@ -66,8 +82,6 @@ func main() {
 
 		address = "0.0.0.0:" + *port
 	}
-
-	//todo 判断
 	refreshResult := aliyun.RefreshToken(*refreshToken)
 
 	config := model.Config{
