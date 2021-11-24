@@ -15,18 +15,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/checkout@master
-      - name: codecov
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          directory: /home/runner/work/go-aliyundrive-webdav/go-aliyundrive-webdav/
-          name: codecov-umbrella
-          fail_ci_if_error: true
-          files: ./coverage1.xml,./coverage2.xml # optional
-          flags: unittests
-          verbose: true
-
       - uses: actions/setup-go@v2
         with:
           node-version: '1.16'
