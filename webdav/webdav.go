@@ -211,8 +211,16 @@ func (h *Handler) handleGetHeadPost(w http.ResponseWriter, r *http.Request) (sta
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath, "/")
-		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+
+		list, err := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+		if err != nil {
+			return http.StatusNotFound, err
+		}
+
 		fi, err = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+		if err != nil || fi.FileId == "" {
+			return http.StatusNotFound, err
+		}
 		//url := fi.Thumbnail
 		//url := fi.Url
 		//if len(url) == 0 {
