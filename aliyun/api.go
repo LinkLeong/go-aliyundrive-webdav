@@ -3,12 +3,12 @@ package aliyun
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"io/ioutil"
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/aliyun/net"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/tidwall/gjson"
@@ -117,30 +117,40 @@ func RefreshToken(refreshToken string) model.RefreshTokenModel {
 	if _, err := os.Stat(path); err == nil {
 		buf, _ := ioutil.ReadFile(path)
 		refreshToken = string(buf)
-		if(len(refreshToken) >= 32){
+		if len(refreshToken) >= 32 {
 			refreshToken = refreshToken[:32] // refreshToken is only 32 bit?? FIXME
 		}
 	}
 	rs := net.Post(model.APIREFRESHTOKENURL, "", []byte(`{"refresh_token":"`+refreshToken+`"}`))
 	var refresh model.RefreshTokenModel
-	if len(rs) > 0 {
-		err := json.Unmarshal(rs, &refresh)
-		if err != nil {
-			fmt.Println("刷新token失败,失败信息", err)
-			fmt.Println("刷新token返回信息", refresh)
-		}
-	} else {
+
+	if len(rs) <= 0 {
 		fmt.Println("刷新token失败")
+		return refresh
 	}
 
-	if _, err := os.Stat(path); err == nil {
-		if(refreshToken != refresh.RefreshToken){
-			content := []byte(refresh.RefreshToken)
-			ioutil.WriteFile(path, content, 0600)
-		}
+	err := json.Unmarshal(rs, &refresh)
+	if err != nil {
+		fmt.Println("刷新token失败,失败信息", err)
+		fmt.Println("刷新token返回信息", refresh)
+		return refresh
 	}
+
+	if refreshToken == refresh.RefreshToken {
+		return refresh
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		fmt.Printf("RefreshToken Err=%s", err)
+		return refresh
+	}
+
+	err = ioutil.WriteFile(path, []byte(refresh.RefreshToken), 0600)
+	if err != nil {
+		fmt.Printf("RefreshToken Err=%s", err)
+	}
+
 	return refresh
-
 }
 
 func RemoveTrash(token string, driveId string, fileId string, parentFileId string) bool {
