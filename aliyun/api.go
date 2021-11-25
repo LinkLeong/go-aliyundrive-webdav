@@ -2,6 +2,7 @@ package aliyun
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
@@ -140,14 +141,18 @@ func RefreshToken(refreshToken string) model.RefreshTokenModel {
 		return refresh
 	}
 
-	if _, err := os.Stat(path); err != nil {
-		fmt.Printf("RefreshToken Err=%s", err)
+	_, err = os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return refresh
+	}
+	if err != nil {
+		fmt.Println("更新token文件失败,失败信息", err)
 		return refresh
 	}
 
 	err = ioutil.WriteFile(path, []byte(refresh.RefreshToken), 0600)
 	if err != nil {
-		fmt.Printf("RefreshToken Err=%s", err)
+		fmt.Println("更新token文件失败,失败信息", err)
 	}
 
 	return refresh
