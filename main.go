@@ -39,6 +39,7 @@ func main() {
 	var versin *bool
 	var log *bool
 	var check *string
+
 	//
 	port = flag.String("port", "8085", "默认8085")
 	path = flag.String("path", "./", "")
