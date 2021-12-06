@@ -114,7 +114,7 @@ func GetFile(w http.ResponseWriter, url string, token string, rangeStr string, i
 
 func RefreshToken(refreshToken string) model.RefreshTokenModel {
 	path := refreshToken
-	if _, err := os.Stat(path); err == nil {
+	if _, errs := os.Stat(path); errs == nil || os.IsNotExist(errs) {
 		buf, _ := ioutil.ReadFile(path)
 		refreshToken = string(buf)
 		if len(refreshToken) >= 32 {
