@@ -742,28 +742,46 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	var list model.FileListModel
 	var fi model.ListModel
 	fmt.Println(reqPath)
-	if strings.Contains(reqPath, "1111") {
-		fmt.Println("dddd")
-	}
 	var unfindListErr error
 	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
 		dirName := strings.TrimRight(reqPath, "/")
 		dirName = strings.TrimLeft(dirName, "/")
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-
 		strArr := strings.Split(dirName, "/")
 		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-		list, unfindListErr = findList(strArr, h.Config.Token, h.Config.DriveId)
+		list, unfindListErr = findList(strArr, h.Config.Token, h.Config.DriveId, fi.FileId)
 
 	} else if len(reqPath) == 0 {
 		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 		if err != nil {
 			//fmt.Println("获取列表失败")
 		}
+		for _, fileInfo := range list.Items {
+			if fileInfo.Type == "folder" {
+				cache.GoCache.SetDefault(reqPath+fileInfo.Name, fileInfo.FileId)
+			}
+		}
 	} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath, "/")
-		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+		va, ok := cache.GoCache.Get(reqPath)
+		var value string
+		if ok {
+			value = va.(string)
+		} else {
+			value = ""
+		}
+		list, _ = aliyun.GetList(h.Config.Token, h.Config.DriveId, value)
+		for _, fileInfo := range list.Items {
+			if fileInfo.Type == "folder" {
+				cache.GoCache.SetDefault(reqPath+"/"+fileInfo.Name, fileInfo.FileId)
+			}
+		}
+		if len(list.Items) == 0 {
+			fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, value)
+		} else {
+
+			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+		}
 	}
 
 	if err != nil {
@@ -889,7 +907,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			return err
 		}
 		href := path.Join(h.Prefix, parent.Name)
-		if parent.ParentFileId == "root" {
+		if parent.ParentFileId == "root" && parent.FileId == "" {
 			href = "/" + parent.Name
 		} else {
 			href, _ = aliyun.GetFilePath(h.Config.Token, h.Config.DriveId, parent.ParentFileId, parent.FileId, parent.Type)
@@ -897,8 +915,9 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 			if parent.Type == "folder" {
 				href += "/"
 			}
-		}
+			//list, _ = aliyun.GetList(h.Config.Token, h.Config.DriveId, parent.FileId)
 
+		}
 		return mw.write(makePropstatResponse(href, pstats))
 	}
 	userAgent := r.Header.Get("User-Agent")
@@ -969,11 +988,11 @@ func findUrl(strArr []string, token, driveId string, list model.FileListModel) (
 	return m, nil
 }
 
-func findList(strArr []string, token, driveId string) (model.FileListModel, error) {
+func findList(strArr []string, token, driveId string, parentId string) (model.FileListModel, error) {
 	var list model.FileListModel
 	var err error
 	err = errors.New("未找到数据")
-	list, _ = aliyun.GetList(token, driveId, "")
+	list, _ = aliyun.GetList(token, driveId, parentId)
 	num := 0
 	for _, a := range strArr {
 		for _, v := range list.Items {
