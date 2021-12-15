@@ -15,7 +15,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func GetList(token string, driveId string, parentFileId string) (model.FileListModel, error) {
+func GetList(token string, driveId string, parentFileId string, marker ...string) (model.FileListModel, error) {
 
 	if len(parentFileId) == 0 {
 		parentFileId = "root"
@@ -53,6 +53,11 @@ func GetList(token string, driveId string, parentFileId string) (model.FileListM
 	e := json.Unmarshal(body, &list)
 	if e != nil {
 		fmt.Println(e)
+	}
+	if list.NextMarker != "" {
+		var newList, _ = GetList(token, driveId, parentFileId, list.NextMarker)
+		list.Items = append(list.Items, newList.Items...)
+		list.NextMarker = newList.NextMarker
 	}
 	if len(list.Items) > 0 {
 		cache.GoCache.SetDefault(parentFileId, list)
