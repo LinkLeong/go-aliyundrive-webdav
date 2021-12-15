@@ -43,7 +43,7 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            a624669980/go-aliyundriver-webdav
+            topcheer/go-aliyundriver-webdav
             ghcr.io/${{ github.repository }}
 
       - name: Build and push Docker images
