@@ -58,6 +58,7 @@ func GetList(token string, driveId string, parentFileId string, marker ...string
 		var newList, _ = GetList(token, driveId, parentFileId, list.NextMarker)
 		list.Items = append(list.Items, newList.Items...)
 		list.NextMarker = newList.NextMarker
+		fmt.Println("next marker: " + list.NextMarker)
 	}
 	if len(list.Items) > 0 {
 		cache.GoCache.SetDefault(parentFileId, list)
