@@ -23,7 +23,7 @@ func init() {
 	cache.Init()
 }
 
-var Version = "v1.0.22"
+var Version = "v1.1.0"
 
 type Task struct {
 	Id string `json:"id"`
