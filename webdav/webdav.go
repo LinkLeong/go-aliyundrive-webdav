@@ -779,7 +779,8 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		if len(list.Items) == 0 {
 			fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, value)
 		} else {
-			list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+			//bugfix: use new local scope variable
+			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
 			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 		}
 	}
