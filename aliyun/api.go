@@ -41,6 +41,10 @@ func GetList(token string, driveId string, parentFileId string, marker ...string
 	postData["fields"] = "*"
 	postData["order_by"] = "updated_at"
 	postData["order_direction"] = "DESC"
+	//add marker post data
+	if len(marker) > 0 {
+		postData["marker"] = marker[0]
+	}
 
 	data, err := json.Marshal(postData)
 	if err != nil {
