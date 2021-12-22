@@ -47,6 +47,8 @@ echo "your refreshToken" > /path/to/save/refreshToken
 # openwrt ui
 [项目路径](https://github.com/jerrykuku/luci-app-go-aliyundrive-webdav)
 
+# telegram群
+[我要加入](https://t.me/+ExaQpIuwGzpjOWM1)
 
 # 浏览器获取refreshToken方式
 1. 先通过浏览器（建议chrome）打开阿里云盘官网并登录：https://www.aliyundrive.com/drive/
@@ -81,3 +83,5 @@ echo "your refreshToken" > /path/to/save/refreshToken
 5. 本软件仅做流量转发，不拦截、存储、篡改任何用户数据。
 6. 严禁使用本软件进行盈利、损坏官方、散落任何违法信息等行为。
 7. 本软件不作任何稳定性的承诺，如因使用本软件导致的文件丢失、文件破坏等意外情况，均与本软件无关。
+
+
