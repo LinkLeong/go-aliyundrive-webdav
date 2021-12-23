@@ -9,7 +9,7 @@ import (
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/aliyun/net"
 	"go-aliyun-webdav/utils"
-	"io/ioutil"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -34,6 +34,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 		//r.ContentLength = int64(len(dataTemp))
 		return
 	}
+
 	//proof 偏移量
 	var offset int64 = 0
 	//proof内容base64
@@ -42,10 +43,15 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	var flashUpload bool = false
 	//status code
 	var code int
-	//获取请求文件内容，对于大文件不是很友好，但是为了算文件hash好像没有什么更好的方法
-	buff, _ := ioutil.ReadAll(r.Body)
+	var readbytes []byte
 	if r.ContentLength > 1024*1024*20 {
-		preHashDataBytes := buff[:1024]
+		preHashDataBytes := make([]byte, 1024)
+		_, err := io.ReadFull(r.Body, preHashDataBytes)
+		if err != nil {
+			fmt.Println("error reading file", fileName)
+			return
+		}
+		readbytes = append(readbytes, preHashDataBytes...)
 		h := sha1.New()
 		h.Write(preHashDataBytes)
 		//检查是否可以极速上传，逻辑如下
@@ -65,12 +71,27 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 		}
 		offset = int64(f % uint64(r.ContentLength))
 		end := math.Min(float64(offset+8), float64(r.ContentLength))
-		offsetBytes := buff[offset:int64(end)]
+		//先读取到offset end位置的所有字节，由于上面已经读取1024，这里剪掉
+		offsetBytes := make([]byte, int64(end-1024))
+		_, err2 := io.ReadFull(r.Body, offsetBytes)
+		if err2 != nil {
+			fmt.Println(err2)
+			return
+		}
+		readbytes = append(readbytes, offsetBytes...)
+		offsetBytes = offsetBytes[offset-1024 : int64(end)-1024]
 		proof = utils.GetProof(offsetBytes)
 		flashUpload = true
 	}
+	buff := make([]byte, r.ContentLength-int64(len(readbytes)))
+	_, err3 := io.ReadFull(r.Body, buff)
+	if err3 != nil {
+		fmt.Println(err3)
+		return
+	}
 	h2 := sha1.New()
-	h2.Write(buff)
+	readbytes = append(readbytes, buff...)
+	h2.Write(readbytes)
 	uploadUrl, uploadId, fileId := UpdateFileFile(token, driveId, fileName, parentId, strconv.FormatInt(r.ContentLength, 10), int(count), strings.ToUpper(hex.EncodeToString(h2.Sum(nil))), proof, flashUpload)
 
 	if flashUpload && (fileId != "") {
@@ -85,9 +106,9 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 
 		var dataByte []byte
 		if i == int(count)-1 {
-			dataByte = buff[int64(i)*DEFAULT : r.ContentLength]
+			dataByte = readbytes[int64(i)*DEFAULT : r.ContentLength]
 		} else {
-			dataByte = buff[int64(i)*DEFAULT : int64(i+1)*DEFAULT]
+			dataByte = readbytes[int64(i)*DEFAULT : int64(i+1)*DEFAULT]
 		}
 		UploadFile(uploadUrl[i].Str, token, dataByte)
 	}
