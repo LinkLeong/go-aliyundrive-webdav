@@ -678,7 +678,7 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	reqPath, status, err := h.stripPrefix(r.URL.Path)
 	var list model.FileListModel
 	var fi model.ListModel
-	fmt.Println(reqPath)
+	//fmt.Println(reqPath)
 	var unfindListErr error
 	var walkErr error
 	//定位当前文件或文件夹位置,假设同级目录下无重名文件或文件夹
