@@ -59,7 +59,7 @@ func GetList(token string, driveId string, parentFileId string, marker ...string
 		fmt.Println(e)
 	}
 	if list.NextMarker != "" {
-		fmt.Println("Next Page Marker: " + list.NextMarker)
+		//fmt.Println("Next Page Marker: " + list.NextMarker)
 		var newList, _ = GetList(token, driveId, parentFileId, list.NextMarker)
 		list.Items = append(list.Items, newList.Items...)
 		list.NextMarker = newList.NextMarker
@@ -247,7 +247,7 @@ func Locate(token string, driverId string, paths []string, parentFileId string) 
 			parentFileId = "root"
 		}
 
-		list = Search(token, driverId, path, parentFileId)
+		list = Search(token, driverId, path, parentFileId, "folder")
 
 		if len(list.Items) > 0 {
 			item = list.Items[0]
@@ -265,13 +265,16 @@ func Locate(token string, driverId string, paths []string, parentFileId string) 
 	return item, list
 }
 
-func Search(token string, driveId string, name string, parentFileId string) model.FileListModel {
+func Search(token string, driveId string, name string, parentFileId string, Type string) model.FileListModel {
 	var list model.FileListModel
 	if c, ok := cache.GoCache.Get("SearchResult_" + parentFileId + name); ok {
 		return c.(model.FileListModel)
 	}
+	if Type == "" {
+		Type = "folder"
+	}
 	//{"drive_id":"67476554","query":"parent_file_id = \"61bdf6d66eced7c2c5324bb9a1fa54ae0d5e0f7d\" and (name = \"Screen Shot 2021-08-20 at 22.17.53.png\")","order_by":"name ASC","limit":100}
-	body := net.Post(model.APISEARCH, token, []byte(`{"drive_id":"`+driveId+`","query":"parent_file_id = \"`+parentFileId+`\" and (name = \"`+name+`\")","order_by":"name ASC","limit":100}`))
+	body := net.Post(model.APISEARCH, token, []byte(`{"drive_id":"`+driveId+`","query":"parent_file_id = \"`+parentFileId+`\" and (name = \"`+name+`\") and (type=\"`+Type+`\")","order_by":"name ASC","limit":200}`))
 	e := json.Unmarshal(body, &list)
 	if e != nil {
 		fmt.Println(e)
@@ -387,10 +390,10 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 
 	var createData string = ""
 	if flashUpload {
-		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"overwrite","size":` + size + `,"content_hash_name":"sha1","content_hash":"` + contentHash + `","proof_version":"v1","proof_code":"` + proof + `"}`
+		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"auto_rename","size":` + size + `,"content_hash_name":"sha1","content_hash":"` + contentHash + `","proof_version":"v1","proof_code":"` + proof + `"}`
 
 	} else {
-		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"overwrite","size":` + size + `,"content_hash_name":"","proof_version":"v1"}`
+		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"auto_rename","size":` + size + `,"content_hash_name":"","proof_version":"v1"}`
 	}
 	rs := net.Post(model.APIFILEUPLOAD, token, []byte(createData))
 	rapidUpload := gjson.GetBytes(rs, "rapid_upload").Bool()
