@@ -11,7 +11,6 @@ import (
 	"go-aliyun-webdav/aliyun"
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
-	"io"
 	"io/ioutil"
 	"reflect"
 	"strconv"
@@ -20,7 +19,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -299,44 +297,31 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) (status i
 	}
 
 	var fi model.ListModel
-	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+	if len(reqPath) > 0 {
+		if strings.HasSuffix(reqPath, "/") {
+			reqPath = reqPath[:len(reqPath)-1]
+		}
 		strArr := strings.Split(reqPath, "/")
-		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 
-		//for _, i := range list.Items {
-		//	if i.Name == reqPath {
-		//		fi = i
-		//		data = aliyun.GetFile(i.Url, h.Config.Token)
-		//		break
-		//	}
-		//}
+		fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, getParentFileId(strArr))
+		if fi.Name == strArr[len(strArr)-1] {
+			aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fi.FileId, fi.ParentFileId)
+			cache.GoCache.Delete("FID_" + reqPath)
+		} else {
+			fi, _, walkerr := aliyun.Walk(h.Config.Token, h.Config.DriveId, strArr, "root")
+			if walkerr == nil {
+				if fi.Name == strArr[len(strArr)-1] {
+					aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fi.FileId, fi.ParentFileId)
+					cache.GoCache.Delete("FID_" + reqPath)
+				}
+			}
+		}
+
+		if (fi != model.ListModel{}) {
+
+		}
+
 	}
-
-	//release, status, err := h.confirmLocks(r, reqPath, "")
-	//if err != nil {
-	//	return status, err
-	//}
-	//defer release()
-
-	//ctx := r.Context()
-	//
-	//// TODO: return MultiStatus where appropriate.
-	//
-	//// "godoc os RemoveAll" says that "If the path does not exist, RemoveAll
-	//// returns nil (no error)." WebDAV semantics are that it should return a
-	//// "404 Not Found". We therefore have to Stat before we RemoveAll.
-	//if _, err := h.FileSystem.Stat(ctx, reqPath); err != nil {
-	//	if os.IsNotExist(err) {
-	//		return http.StatusNotFound, err
-	//	}
-	//	return http.StatusMethodNotAllowed, err
-	//}
-	////if err := h.FileSystem.RemoveAll(ctx, reqPath); err != nil {
-	////	return http.StatusMethodNotAllowed, err
-	////}
-
-	aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fi.FileId, fi.ParentFileId)
 
 	return http.StatusNoContent, nil
 }
@@ -358,73 +343,22 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 	var fi model.ListModel
 	if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 		strArr := strings.Split(reqPath[:lastIndex], "/")
-		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-
-		//for _, i := range list.Items {
-		//	if i.Name == reqPath {
-		//		fi = i
-		//		data = aliyun.GetFile(i.Url, h.Config.Token)
-		//		break
-		//	}
-		//}
+		fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, getParentFileId(strArr))
+		if fi.Name != strArr[len(strArr)-1] {
+			fi, _, walkerr := aliyun.Walk(h.Config.Token, h.Config.DriveId, strArr, "root")
+			if walkerr == nil {
+				if fi.Name != strArr[len(strArr)-1] {
+					fmt.Println("Error: can't find parent folder")
+				}
+			}
+		}
 	}
 
 	if r.ContentLength == 0 {
-		if reflect.DeepEqual(fi, model.ListModel{}) {
-			fi.FileId = "root"
-		}
-		list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, fi.FileId)
-		var item model.ListModel
-		item.ParentFileId = fi.FileId
-		item.Name = fileName
-		list.Items = append(list.Items, item)
-		cache.GoCache.SetDefault(fi.FileId, list)
-
-		defer r.Body.Close()
 		return http.StatusCreated, nil
 	}
-
-	aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
-
-	//	aliyun.UploadFile(uploadUrl, h.Config.Token, data)
-	//	aliyun.UploadFileComplete(h.Config.Token, h.Config.DriveId, uploadId, fileId)
-	//	release, status, err := h.confirmLocks(r, reqPath, "")
-	//	if err != nil {
-	//		return status, err
-	//	}
-	//	defer release()
-	//	// TODO(rost): Support the If-Match, If-None-Match headers? See bradfitz'
-	//	// comments in http.checkEtag.
-	ctx := r.Context()
-	//
-	//
-	f, err := h.FileSystem.OpenFile(ctx, "./aaa.png", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return http.StatusNotFound, err
-	}
-	//	fmt.Println(r.PostForm.Encode())
-	//		bts, err := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
-	//	fmt.Println(string(bts))
-	_, copyErr := io.Copy(f, r.Body)
-	//fif, statErr := f.Stat()
-	closeErr := f.Close()
-	//	// TODO(rost): Returning 405 Method Not Allowed might not be appropriate.
-	if copyErr != nil {
-		return http.StatusMethodNotAllowed, copyErr
-	}
-	//if statErr != nil {
-	//	return http.StatusMethodNotAllowed, statErr
-	//}
-	if closeErr != nil {
-		return http.StatusMethodNotAllowed, closeErr
-	}
-	//etag, err := findETag(ctx, h.FileSystem, h.LockSystem, model.ListModel{})
-	//if err != nil {
-	//	return http.StatusInternalServerError, err
-	//}
-	//w.Header().Set("ETag", etag)
+	fileId := aliyun.ContentHandle(r, h.Config.Token, h.Config.DriveId, fi.FileId, fileName)
+	cache.GoCache.Set("FID"+reqPath, fileId, -1)
 	return http.StatusCreated, nil
 }
 
@@ -444,16 +378,19 @@ func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status in
 	if len(reqPath) > 0 {
 		parentFileId := "root"
 		var name string = reqPath
-		var fi model.ListModel
+		//var fi model.ListModel
 		index := strings.LastIndex(reqPath[0:len(reqPath)], "/")
 		if index > -1 {
-			strArr := strings.Split(reqPath[0:index], "/")
-			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-			parentFileId = fi.FileId
+			strArr := strings.Split(reqPath, "/")
+			parentFileId = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, getFileId(strArr)).FileId
 			name = reqPath[index+1:]
 		}
-		aliyun.MakeDir(h.Config.Token, h.Config.DriveId, name, parentFileId)
+		dir := aliyun.MakeDir(h.Config.Token, h.Config.DriveId, name, parentFileId)
+		if (dir != model.ListModel{}) {
+			cache.GoCache.Set("FID_"+reqPath, dir.FileId, -1)
+			cache.GoCache.Set("parent"+reqPath, dir.ParentFileId, -1)
+			cache.GoCache.Delete(parentFileId)
+		}
 	}
 	//if err := h.FileSystem.Mkdir(ctx, reqPath, 0777); err != nil {
 	//	if os.IsNotExist(err) {
@@ -496,12 +433,12 @@ func (h *Handler) handleCopyMove(w http.ResponseWriter, r *http.Request) (status
 	}
 
 	srcIndex := strings.LastIndex(src, "/")
-	dstIndex := -1
-	if runtime.GOOS == "darwin" {
-		dstIndex = len(dst)
-	} else {
-		dstIndex = strings.LastIndex(dst, "/")
-	}
+	//if runtime.GOOS == "darwin" {
+	//	dstIndex = len(dst)
+	//} else {
+	//	dstIndex = strings.LastIndex(dst, "/")
+	//}
+	dstIndex := strings.LastIndex(dst, "/")
 
 	rename := false
 	if srcIndex == -1 && srcIndex == dstIndex {
@@ -679,7 +616,7 @@ func (h *Handler) handleLock(w http.ResponseWriter, r *http.Request) (retStatus 
 		}
 		if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
 			strArr := strings.Split(reqPath[:lastIndex], "/")
-			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, getFileId(strArr))
 			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
 		}
 		if reflect.DeepEqual(fi, model.ListModel{}) {
@@ -743,56 +680,107 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	var fi model.ListModel
 	fmt.Println(reqPath)
 	var unfindListErr error
-	if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
-		dirName := strings.TrimRight(reqPath, "/")
-		dirName = strings.TrimLeft(dirName, "/")
-		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		strArr := strings.Split(dirName, "/")
-		fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
-		list, unfindListErr = findList(strArr, h.Config.Token, h.Config.DriveId, fi.FileId)
+	var walkErr error
+	//定位当前文件或文件夹位置,假设同级目录下无重名文件或文件夹
+	if strings.HasSuffix(reqPath, "/") {
+		reqPath = reqPath[0 : len(reqPath)-1]
+	}
 
-	} else if len(reqPath) == 0 {
-		list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-		if err != nil {
-			//fmt.Println("获取列表失败")
-		}
-		for _, fileInfo := range list.Items {
-			if fileInfo.Type == "folder" {
-				cache.GoCache.SetDefault(reqPath+fileInfo.Name, fileInfo.FileId)
-			}
-		}
-	} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
-		strArr := strings.Split(reqPath, "/")
-		va, ok := cache.GoCache.Get(reqPath)
-		var value string
-		if ok {
-			value = va.(string)
-		} else {
-			value = ""
-		}
-		list, _ = aliyun.GetList(h.Config.Token, h.Config.DriveId, value)
-		for _, fileInfo := range list.Items {
-			if fileInfo.Type == "folder" {
-				cache.GoCache.SetDefault(reqPath+"/"+fileInfo.Name, fileInfo.FileId)
-			}
-		}
-		if len(list.Items) == 0 {
-			fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, value)
-		} else {
-			//bugfix: use new local scope variable
-			list, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
-			fi, _ = findUrl(strArr, h.Config.Token, h.Config.DriveId, list)
+	//fmt.Println("Locate: " + reqPath)
+	fi, list, walkErr = aliyun.Walk(h.Config.Token, h.Config.DriveId, strings.Split(reqPath, "/"), "root")
+	if walkErr == nil {
+		cache.GoCache.Set("FID_"+reqPath, fi.FileId, -1)
+		for _, i := range list.Items {
+			cache.GoCache.Set("FID_"+reqPath+"/"+i.Name, i.FileId, -1)
 		}
 	}
+	//fmt.Println("Result: ", fi, len(list.Items))
+	//if len(reqPath) > 0 && strings.HasSuffix(reqPath, "/") {
+	//	dirName := strings.TrimRight(reqPath, "/")
+	//	dirName = strings.TrimLeft(dirName, "/")
+	//	var parentFileId string
+	//	pid, ok := cache.GoCache.Get("parent" + dirName)
+	//	if ok {
+	//		parentFileId = pid.(string)
+	//	} else {
+	//		parentFileId = ""
+	//	}
+	//	alist, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, parentFileId)
+	//	strArr := strings.Split(dirName, "/")
+	//	fi, err = findUrl(strArr, h.Config.Token, h.Config.DriveId, alist)
+	//	if (fi == model.ListModel{}) {
+	//
+	//		var fileId string
+	//		pid, ok := cache.GoCache.Get(dirName)
+	//		if ok {
+	//			fileId = pid.(string)
+	//		} else {
+	//			fileId = ""
+	//		}
+	//		fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, fileId)
+	//	}
+	//	list, unfindListErr = findList(strArr, h.Config.Token, h.Config.DriveId, fi.FileId)
+	//	if (fi != model.ListModel{}) {
+	//		cache.GoCache.Set(dirName, fi.FileId, -1)
+	//		cache.GoCache.Set("parent"+dirName, fi.ParentFileId, -1)
+	//	}
+	//	if len(list.Items) > 0 {
+	//		for _, fileInfo := range list.Items {
+	//			cache.GoCache.Set(dirName+"/"+fileInfo.Name, fileInfo.FileId, -1)
+	//			cache.GoCache.Set("parent"+dirName+"/"+fileInfo.Name, fileInfo.ParentFileId, -1)
+	//		}
+	//	}
+	//
+	//} else if len(reqPath) == 0 {
+	//	list, err = aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+	//	if err != nil {
+	//		//fmt.Println("获取列表失败")
+	//	}
+	//	for _, fileInfo := range list.Items {
+	//		//if fileInfo.Type == "file" {
+	//		//	fmt.Println("remove file: " + fileInfo.Name)
+	//		//	aliyun.RemoveTrash(h.Config.Token, h.Config.DriveId, fileInfo.FileId, fileInfo.ParentFileId)
+	//		//}
+	//		cache.GoCache.Set(fileInfo.Name, fileInfo.FileId, -1)
+	//		cache.GoCache.Set("parent"+fileInfo.Name, fileInfo.ParentFileId, -1)
+	//	}
+	//} else if len(reqPath) > 0 && !strings.HasSuffix(reqPath, "/") {
+	//	strArr := strings.Split(reqPath, "/")
+	//	va, ok := cache.GoCache.Get(reqPath)
+	//	var value string
+	//	if ok {
+	//		value = va.(string)
+	//	} else {
+	//		value = getFileId(strArr)
+	//
+	//	}
+	//	list, _ = aliyun.GetList(h.Config.Token, h.Config.DriveId, value)
+	//	for _, fileInfo := range list.Items {
+	//		cache.GoCache.Set(reqPath+"/"+fileInfo.Name, fileInfo.FileId, -1)
+	//		cache.GoCache.Set("parent"+reqPath+"/"+fileInfo.Name, fileInfo.ParentFileId, -1)
+	//	}
+	//	if len(list.Items) == 0 {
+	//		fi = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, value)
+	//		if fi.Name != strArr[len(strArr)-1] {
+	//			fi = model.ListModel{}
+	//		}
+	//	} else {
+	//		//bugfix: use new local scope variable
+	//		alist, _ := aliyun.GetList(h.Config.Token, h.Config.DriveId, "")
+	//		fi, err = findUrl(strArr, h.Config.Token, h.Config.DriveId, alist)
+	//		list, unfindListErr = findList(strArr, h.Config.Token, h.Config.DriveId, fi.FileId)
+	//
+	//	}
+	//}
 
 	if err != nil {
 		return status, err
 	}
 	ctx := r.Context()
-	if (err != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" && strings.Index(reqPath, "test.png") == -1 {
+	if (walkErr != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" && strings.Index(reqPath, "test.png") == -1 {
 		//新建或修改名称的时候需要判断是否已存在
 		if len(list.Items) == 0 || unfindListErr != nil {
-			return http.StatusNotFound, err
+			return http.StatusNotFound, walkErr
 		}
 
 		//return http.StatusMethodNotAllowed, err
@@ -810,75 +798,6 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	}
 
 	mw := multistatusWriter{w: w}
-
-	//var prefix string = strings.TrimLeft(r.URL.Path, "/")
-	//for _, v := range list.Items {
-	//	var pstats []Propstat
-	//	if pf.Propname != nil {
-	//		pnames, err := propnames(v)
-	//		if err != nil {
-	//			fmt.Println(err)
-	//			continue
-	//		}
-	//		pstat := Propstat{Status: http.StatusOK}
-	//		for _, xmlname := range pnames {
-	//			pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
-	//		}
-	//		pstats = append(pstats, pstat)
-	//	} else if pf.Allprop != nil {
-	//		pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, v)
-	//	} else {
-	//		pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, v)
-	//	}
-	//	if err != nil {
-	//		fmt.Println(err)
-	//		continue
-	//	}
-	//	//href := ""
-	//	//if v.ParentFileId != "root" {
-	//	//	m := aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, v.ParentFileId)
-	//	//	href += m.Name + "/"
-	//	//}
-	//	//href += v.Name
-	//	href := path.Join(prefix, v.Name)
-	//	if href != "/" && v.Type == "folder" {
-	//		href += "/"
-	//	}
-	//	mw.write(makePropstatResponse(href, pstats))
-	//}
-	//
-	//if len(list.Items) == 0 {
-	//	var pstats []Propstat
-	//	if pf.Propname != nil {
-	//		pnames, err := propnames(fi)
-	//		if err != nil {
-	//			fmt.Println(err)
-	//		}
-	//		pstat := Propstat{Status: http.StatusOK}
-	//		for _, xmlname := range pnames {
-	//			pstat.Props = append(pstat.Props, Property{XMLName: xmlname})
-	//		}
-	//		pstats = append(pstats, pstat)
-	//	} else if pf.Allprop != nil {
-	//		pstats, err = allprop(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
-	//	} else {
-	//		pstats, err = props(ctx, h.FileSystem, h.LockSystem, pf.Prop, fi)
-	//	}
-	//	if err != nil {
-	//		fmt.Println(err)
-	//
-	//	}
-	//	href := path.Join(prefix, fi.Name)
-	//	if href != "/" && fi.Type == "folder" {
-	//		href += "/"
-	//	}
-	//	mw.write(makePropstatResponse(href, pstats))
-	//}
-
-	//if err != nil {
-	//	return err
-	//}
-	//
 
 	walkFn := func(parent model.ListModel, info model.FileListModel, err error) error {
 		if reflect.DeepEqual(parent, model.ListModel{}) {
@@ -923,15 +842,53 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 	}
 	userAgent := r.Header.Get("User-Agent")
 	cheng := 1
-	walkErr := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId, userAgent, cheng)
+	walkError := walkFS(ctx, h.FileSystem, depth, fi, list, walkFn, h.Config.Token, h.Config.DriveId, userAgent, cheng)
 	closeErr := mw.close()
-	if walkErr != nil {
+	if walkError != nil {
 		return http.StatusInternalServerError, walkErr
 	}
 	if closeErr != nil {
 		return http.StatusInternalServerError, closeErr
 	}
 	return 0, nil
+}
+
+func getParentFileId(strArr []string) string {
+	cacheKey := strArr[0]
+	for _, folder := range strArr[1:] {
+		cacheKey = cacheKey + "/" + folder
+	}
+	va, ok := cache.GoCache.Get("FID_" + cacheKey)
+	if ok {
+		return va.(string)
+	} else {
+		return "root"
+	}
+
+}
+
+func getFileId(strArr []string) string {
+	//如果是新建或者修改文件或者文件夹，获取上级的parentFileId
+	if len(strArr) > 1 {
+		cacheKey := strArr[0]
+		for _, folder := range strArr[1 : len(strArr)-1] {
+			cacheKey = cacheKey + "/" + folder
+		}
+		va, ok := cache.GoCache.Get("FID_" + cacheKey)
+		if ok {
+			return va.(string)
+		} else {
+			return "root"
+		}
+
+	} else {
+		va, ok := cache.GoCache.Get("FID_" + strArr[0])
+		if ok {
+			return va.(string)
+		} else {
+			return "root"
+		}
+	}
 }
 
 func (h *Handler) handleProppatch(w http.ResponseWriter, r *http.Request) (status int, err error) {

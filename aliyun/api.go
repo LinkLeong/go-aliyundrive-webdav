@@ -59,10 +59,10 @@ func GetList(token string, driveId string, parentFileId string, marker ...string
 		fmt.Println(e)
 	}
 	if list.NextMarker != "" {
+		fmt.Println("Next Page Marker: " + list.NextMarker)
 		var newList, _ = GetList(token, driveId, parentFileId, list.NextMarker)
 		list.Items = append(list.Items, newList.Items...)
 		list.NextMarker = newList.NextMarker
-		fmt.Println("next marker: " + list.NextMarker)
 	}
 	if len(list.Items) > 0 {
 		cache.GoCache.SetDefault(parentFileId, list)
@@ -169,10 +169,11 @@ func RefreshToken(refreshToken string) model.RefreshTokenModel {
 }
 
 func RemoveTrash(token string, driveId string, fileId string, parentFileId string) bool {
-	rs := net.Post(model.APIREMOVETRASH, token, []byte(`{"drive_id":"`+driveId+`","file_id":"`+fileId+`"}`))
-	if len(rs) == 0 {
-		cache.GoCache.Delete(parentFileId)
-	}
+	net.Post(model.APIREMOVETRASH, token, []byte(`{"drive_id":"`+driveId+`","file_id":"`+fileId+`"}`))
+	//if len(rs) == 0 {
+	//	cache.GoCache.Delete(parentFileId)
+	//}
+	cache.GoCache.Delete(parentFileId)
 	return false
 }
 
@@ -187,8 +188,102 @@ func ReName(token string, driveId string, newName string, fileId string) bool {
 	fmt.Println(string(rs))
 	return true
 }
-func MakeDir(token string, driveId string, name string, parentFileId string) bool {
+
+// Walk 通过路径查找对应项目及所有子项目，当新建文件或文件夹时，也返回Not Found
+func Walk(token string, driverId string, paths []string, parentFileId string) (model.ListModel, model.FileListModel, error) {
+	var item model.ListModel
+	var list model.FileListModel
+	var err error
+	err = errors.New("not found")
+	if len(paths) == 0 || paths[0] == "" {
+		item = model.ListModel{}
+		list, _ = GetList(token, driverId, "")
+		return item, list, nil
+	}
+	if parentFileId == "" {
+		parentFileId = "root"
+	}
+	index := 0
+	for _, path := range paths {
+		list, _ = GetList(token, driverId, parentFileId)
+		var found bool
+		for _, v := range list.Items {
+			if v.Name == path {
+				index++
+				found = true
+				item = v
+				//找到一个匹配的并且为路径的最后一个，则直接返回相应信息，并直接跳出本循环
+				if path == paths[len(paths)-1] && index == len(paths) {
+					list, _ = GetList(token, driverId, item.FileId)
+					return item, list, nil
+				}
+				break
+			}
+		}
+		if found {
+			//开始递归查询子目录
+			paths = paths[1:]
+			index = 0
+			item, list, err = Walk(token, driverId, paths, item.FileId)
+			break
+		} else {
+			return model.ListModel{}, model.FileListModel{}, err
+		}
+
+	}
+	return item, list, nil
+}
+
+func Locate(token string, driverId string, paths []string, parentFileId string) (model.ListModel, model.FileListModel) {
+	var item model.ListModel
+	var list model.FileListModel
+	if len(paths) == 0 || paths[0] == "" {
+		item = model.ListModel{}
+		list, _ = GetList(token, driverId, "")
+		return item, list
+	}
+	for _, path := range paths {
+		if parentFileId == "" {
+			parentFileId = "root"
+		}
+
+		list = Search(token, driverId, path, parentFileId)
+
+		if len(list.Items) > 0 {
+			item = list.Items[0]
+			list, _ = GetList(token, driverId, item.FileId)
+			if path == paths[len(paths)-1] {
+				return item, list
+			}
+			item, list = Locate(token, driverId, paths[1:], item.FileId)
+		} else {
+			list, _ = GetList(token, driverId, item.FileId)
+			return item, list
+		}
+
+	}
+	return item, list
+}
+
+func Search(token string, driveId string, name string, parentFileId string) model.FileListModel {
+	var list model.FileListModel
+	if c, ok := cache.GoCache.Get("SearchResult_" + parentFileId + name); ok {
+		return c.(model.FileListModel)
+	}
+	//{"drive_id":"67476554","query":"parent_file_id = \"61bdf6d66eced7c2c5324bb9a1fa54ae0d5e0f7d\" and (name = \"Screen Shot 2021-08-20 at 22.17.53.png\")","order_by":"name ASC","limit":100}
+	body := net.Post(model.APISEARCH, token, []byte(`{"drive_id":"`+driveId+`","query":"parent_file_id = \"`+parentFileId+`\" and (name = \"`+name+`\")","order_by":"name ASC","limit":100}`))
+	e := json.Unmarshal(body, &list)
+	if e != nil {
+		fmt.Println(e)
+	}
+	if len(list.Items) > 0 {
+		cache.GoCache.Set("SearchResult_"+parentFileId+name, list, -1)
+	}
+	return list
+}
+func MakeDir(token string, driveId string, name string, parentFileId string) model.ListModel {
 	rs := net.Post(model.APIMKDIR, token, []byte(`{"drive_id":"`+driveId+`","parent_file_id":"`+parentFileId+`","name":"`+name+`","check_name_mode":"refuse","type":"folder"}`))
+	var fi model.ListModel
 	//正确返回示例
 	//{
 	//	"parent_file_id": "root",
@@ -199,10 +294,14 @@ func MakeDir(token string, driveId string, name string, parentFileId string) boo
 	//	"file_name": "新0000",
 	//	"encrypt_mode": "none"
 	//}
-	if gjson.GetBytes(rs, "file_name").Str == name {
-		cache.GoCache.Delete(parentFileId)
+	err := json.Unmarshal(rs, &fi)
+	if err == nil {
+		if fi.Name == name {
+			cache.GoCache.Delete(parentFileId)
+		}
+		return fi
 	}
-	return true
+	return fi
 }
 
 func GetFileDetail(token string, driveId string, fileId string) model.ListModel {
@@ -273,7 +372,7 @@ func UpdateFileFolder(token string, driveId string, fileName string, parentFileI
 	return false
 }
 
-func UpdateFileFile(token string, driveId string, fileName string, parentFileId string, size string, length int) ([]gjson.Result, string, string) {
+func UpdateFileFile(token string, driveId string, fileName string, parentFileId string, size string, length int, contentHash string, proof string, flashUpload bool) ([]gjson.Result, string, string) {
 
 	if len(parentFileId) == 0 {
 		parentFileId = "root"
@@ -285,8 +384,19 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 	}
 	partStr = partStr[:len(partStr)-1]
 	partStr += "]"
-	createData := `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"auto_rename","size":` + size + `,"content_hash_name":"none","proof_version":"v1"}`
-	rs := net.Post(model.APIFILEUPLOADFILE, token, []byte(createData))
+
+	var createData string = ""
+	if flashUpload {
+		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"overwrite","size":` + size + `,"content_hash_name":"sha1","content_hash":"` + contentHash + `","proof_version":"v1","proof_code":"` + proof + `"}`
+
+	} else {
+		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"overwrite","size":` + size + `,"content_hash_name":"","proof_version":"v1"}`
+	}
+	rs := net.Post(model.APIFILEUPLOAD, token, []byte(createData))
+	rapidUpload := gjson.GetBytes(rs, "rapid_upload").Bool()
+	if rapidUpload == true {
+		return nil, gjson.GetBytes(rs, "upload_id").Str, gjson.GetBytes(rs, "file_id").Str
+	}
 	urlArr := gjson.GetBytes(rs, "part_info_list.#.upload_url").Array()
 	if len(urlArr) == 0 {
 		fmt.Println("创建文件出错", string(rs))
@@ -330,8 +440,8 @@ func UploadFileComplete(token string, driveId string, uploadId string, fileId st
 	//	}
 	createData := `{"drive_id": "` + driveId + `","file_id": "` + fileId + `","upload_id":"` + uploadId + `"}`
 
-	rs := net.Post(model.APIFILECOMPLETE, token, []byte(createData))
-	fmt.Println(string(rs))
+	net.Post(model.APIFILECOMPLETE, token, []byte(createData))
+	//fmt.Println(string(rs))
 	//正确返回占星显示
 	//	}
 	cache.GoCache.Delete(parentId)

@@ -16,6 +16,7 @@ const (
 	APIFILECOMPLETE    = APIBASE + "/v2/file/complete"
 	APIFILEDOWNLOAD    = APIBASE + "/v2/file/get_download_url"
 	APITOTLESIZE       = APIBASE + "/v2/databox/get_personal_info"
+	APISEARCH          = APIBASE + "/adrive/v3/file/search"
 )
 
 type Config struct {

@@ -139,5 +139,24 @@ func main() {
 		}
 		fs.ServeHTTP(w, req)
 	})
+	go refresh(fs)
 	http.ListenAndServe(address, nil)
+
+}
+func refresh(fs *webdav.Handler) {
+	//每隔10小时刷新一下RefreshToken
+	timer := time.NewTimer(10 * time.Hour)
+	for {
+		timer.Reset(10 * time.Hour)
+		select {
+		case <-timer.C:
+			refreshResult := aliyun.RefreshToken(fs.Config.RefreshToken)
+			fs.Config = model.Config{
+				RefreshToken: refreshResult.RefreshToken,
+				Token:        refreshResult.AccessToken,
+				DriveId:      refreshResult.DefaultDriveId,
+				ExpireTime:   time.Now().Unix() + refreshResult.ExpiresIn,
+			}
+		}
+	}
 }
