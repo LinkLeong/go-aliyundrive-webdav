@@ -390,10 +390,10 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 
 	var createData string = ""
 	if flashUpload {
-		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"auto_rename","size":` + size + `,"content_hash_name":"sha1","content_hash":"` + contentHash + `","proof_version":"v1","proof_code":"` + proof + `"}`
+		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"overwrite","size":` + size + `,"content_hash_name":"sha1","content_hash":"` + contentHash + `","proof_version":"v1","proof_code":"` + proof + `"}`
 
 	} else {
-		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"auto_rename","size":` + size + `,"content_hash_name":"","proof_version":"v1"}`
+		createData = `{"drive_id":"` + driveId + `","part_info_list":` + partStr + `,"parent_file_id":"` + parentFileId + `","name":"` + fileName + `","type":"file","check_name_mode":"overwrite","size":` + size + `,"content_hash_name":"","proof_version":"v1"}`
 	}
 	rs := net.Post(model.APIFILEUPLOAD, token, []byte(createData))
 	rapidUpload := gjson.GetBytes(rs, "rapid_upload").Bool()
@@ -443,8 +443,8 @@ func UploadFileComplete(token string, driveId string, uploadId string, fileId st
 	//	}
 	createData := `{"drive_id": "` + driveId + `","file_id": "` + fileId + `","upload_id":"` + uploadId + `"}`
 
-	net.Post(model.APIFILECOMPLETE, token, []byte(createData))
-	//fmt.Println(string(rs))
+	rs := net.Post(model.APIFILECOMPLETE, token, []byte(createData))
+	fmt.Println(string(rs))
 	//正确返回占星显示
 	//	}
 	cache.GoCache.Delete(parentId)

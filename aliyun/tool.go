@@ -1,6 +1,7 @@
 package aliyun
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
@@ -18,7 +19,7 @@ import (
 )
 
 //处理内容
-func ContentHandle(r *http.Request, token string, driveId string, parentId string, fileName string) (fileId string) {
+func ContentHandle(r *http.Request, token string, driveId string, parentId string, fileName string) string {
 	//需要判断参数里面的有效期
 	//默认截取长度10485760
 	//const DEFAULT int64 = 10485760
@@ -33,7 +34,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	} else {
 		//dataTemp, _ := io.ReadAll(r.Body)
 		//r.ContentLength = int64(len(dataTemp))
-		return
+		return ""
 	}
 
 	//proof 偏移量
@@ -55,7 +56,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 		_, err := io.ReadFull(r.Body, preHashDataBytes)
 		if err != nil {
 			fmt.Println("error reading file", fileName)
-			return
+			return ""
 		}
 		readbytes = append(readbytes, preHashDataBytes...)
 		h := sha1.New()
@@ -81,7 +82,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 			_, err2 := io.ReadFull(r.Body, offsetBytes)
 			if err2 != nil {
 				fmt.Println(err2)
-				return
+				return ""
 			}
 			readbytes = append(readbytes, offsetBytes...)
 			offsetBytes = offsetBytes[offset-1024 : int64(end)-1024]
@@ -92,14 +93,12 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 		_, err3 := io.ReadFull(r.Body, buff)
 		if err3 != nil {
 			fmt.Println(err3)
-			return
+			return ""
 		}
 		h2 := sha1.New()
 		readbytes = append(readbytes, buff...)
 		h2.Write(readbytes)
 		uploadUrl, uploadId, uploadFileId = UpdateFileFile(token, driveId, fileName, parentId, strconv.FormatInt(r.ContentLength, 10), int(count), strings.ToUpper(hex.EncodeToString(h2.Sum(nil))), proof, flashUpload)
-		readbytes = nil
-		buff = nil
 	} else {
 		uploadUrl, uploadId, uploadFileId = UpdateFileFile(token, driveId, fileName, parentId, strconv.FormatInt(r.ContentLength, 10), int(count), "", "", false)
 	}
@@ -107,10 +106,10 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	if flashUpload && (uploadFileId != "") {
 		UploadFileComplete(token, driveId, uploadId, uploadFileId, parentId)
 		cache.GoCache.Delete(parentId)
-		return fileId
+		return uploadFileId
 	}
 	if len(uploadUrl) == 0 {
-		return
+		return ""
 	}
 	for i := 0; i < int(count); i++ {
 		var dataByte []byte
@@ -123,13 +122,16 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 		}
 		_, err := io.ReadFull(r.Body, dataByte)
 		if err != nil {
-			fmt.Println("error", err, fileName)
-			return
+			fmt.Println("err reading from request body", err, fileName)
+			_, err := io.ReadFull(bytes.NewReader(readbytes), dataByte)
+			if err != nil {
+				return ""
+			}
 		}
 		UploadFile(uploadUrl[i].Str, token, dataByte)
 	}
 
 	UploadFileComplete(token, driveId, uploadId, uploadFileId, parentId)
 	cache.GoCache.Delete(parentId)
-	return fileId
+	return uploadFileId
 }
