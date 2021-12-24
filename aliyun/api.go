@@ -203,17 +203,15 @@ func Walk(token string, driverId string, paths []string, parentFileId string) (m
 	if parentFileId == "" {
 		parentFileId = "root"
 	}
-	index := 0
 	for _, path := range paths {
 		list, _ = GetList(token, driverId, parentFileId)
 		var found bool
 		for _, v := range list.Items {
 			if v.Name == path {
-				index++
 				found = true
 				item = v
 				//找到一个匹配的并且为路径的最后一个，则直接返回相应信息，并直接跳出本循环
-				if path == paths[len(paths)-1] && index == len(paths) {
+				if path == paths[len(paths)-1] {
 					list, _ = GetList(token, driverId, item.FileId)
 					return item, list, nil
 				}
@@ -223,15 +221,12 @@ func Walk(token string, driverId string, paths []string, parentFileId string) (m
 		if found {
 			//开始递归查询子目录
 			paths = paths[1:]
-			index = 0
 			item, list, err = Walk(token, driverId, paths, item.FileId)
 			break
-		} else {
-			return model.ListModel{}, model.FileListModel{}, err
 		}
 
 	}
-	return item, list, nil
+	return model.ListModel{}, model.FileListModel{}, err
 }
 
 func Locate(token string, driverId string, paths []string, parentFileId string) (model.ListModel, model.FileListModel) {
