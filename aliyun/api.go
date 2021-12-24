@@ -222,11 +222,10 @@ func Walk(token string, driverId string, paths []string, parentFileId string) (m
 			//开始递归查询子目录
 			paths = paths[1:]
 			item, list, err = Walk(token, driverId, paths, item.FileId)
-			break
 		}
 
 	}
-	return model.ListModel{}, model.FileListModel{}, err
+	return item, list, err
 }
 
 func Locate(token string, driverId string, paths []string, parentFileId string) (model.ListModel, model.FileListModel) {

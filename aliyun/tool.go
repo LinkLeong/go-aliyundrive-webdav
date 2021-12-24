@@ -104,7 +104,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	}
 
 	if flashUpload && (uploadFileId != "") {
-		UploadFileComplete(token, driveId, uploadId, uploadFileId, parentId)
+		//UploadFileComplete(token, driveId, uploadId, uploadFileId, parentId)
 		cache.GoCache.Delete(parentId)
 		return uploadFileId
 	}
@@ -122,7 +122,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 		}
 		_, err := io.ReadFull(r.Body, dataByte)
 		if err != nil {
-			fmt.Println("err reading from request body", err, fileName)
+			fmt.Println("err reading from request body", err, fileName, uploadId)
 			_, err := io.ReadFull(bytes.NewReader(readbytes), dataByte)
 			if err != nil {
 				return ""

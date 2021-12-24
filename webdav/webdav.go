@@ -350,7 +350,18 @@ func (h *Handler) handlePut(w http.ResponseWriter, r *http.Request) (status int,
 			cache.GoCache.Set("FID_"+strings.Join(strArr, "/"), fi.FileId, -1)
 		}
 		if fi.Name != strArr[len(strArr)-1] {
-			fi, _, walkerr = aliyun.Walk(h.Config.Token, h.Config.DriveId, strArr, "root")
+			var parentFileId string
+			paths := strings.Split(reqPath, "/")
+			if len(paths) == 1 {
+				parentFileId = "root"
+			} else {
+				if pid, err := cache.GoCache.Get("FID_" + strings.Join(paths[:len(paths)-1], "/")); err {
+					parentFileId = pid.(string)
+				} else {
+					parentFileId = "root"
+				}
+			}
+			fi, _, walkerr = aliyun.Walk(h.Config.Token, h.Config.DriveId, strArr, parentFileId)
 			if walkerr == nil {
 				if fi.Name != strArr[len(strArr)-1] {
 					fmt.Println("Error: can't find parent folder")
