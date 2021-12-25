@@ -84,6 +84,12 @@ func main() {
 		address = "0.0.0.0:" + *port
 	}
 	refreshResult := aliyun.RefreshToken(*refreshToken)
+	if reflect.DeepEqual(refreshResult, model.RefreshTokenModel{}) {
+		fmt.Println("refreshToken已过期")
+		return
+	} else {
+		fmt.Println("refreshToken可以使用")
+	}
 
 	config := model.Config{
 		RefreshToken: refreshResult.RefreshToken,

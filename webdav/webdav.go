@@ -402,7 +402,15 @@ func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status in
 		index := strings.LastIndex(reqPath[0:len(reqPath)], "/")
 		if index > -1 {
 			strArr := strings.Split(reqPath, "/")
-			parentFileId = aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, getFileId(strArr)).FileId
+			//try to get parent folder detail
+			pi := aliyun.GetFileDetail(h.Config.Token, h.Config.DriveId, getFileId(strArr))
+			if reflect.DeepEqual(pi, model.ListModel{}) {
+				return http.StatusBadRequest, errors.New("parent folder does not exist")
+			}
+			if pi.Type == "file" {
+				return http.StatusBadRequest, errors.New("parent need to be a folder")
+			}
+			parentFileId = pi.FileId
 			name = reqPath[index+1:]
 		}
 		dir := aliyun.MakeDir(h.Config.Token, h.Config.DriveId, name, parentFileId)
@@ -412,12 +420,7 @@ func (h *Handler) handleMkcol(w http.ResponseWriter, r *http.Request) (status in
 			cache.GoCache.Delete(parentFileId)
 		}
 	}
-	//if err := h.FileSystem.Mkdir(ctx, reqPath, 0777); err != nil {
-	//	if os.IsNotExist(err) {
-	//		return http.StatusConflict, err
-	//	}
-	//	return http.StatusMethodNotAllowed, err
-	//}
+
 	return http.StatusCreated, nil
 }
 
@@ -729,8 +732,8 @@ func (h *Handler) handlePropfind(w http.ResponseWriter, r *http.Request) (status
 		}
 	}
 
-	if err != nil {
-		return status, err
+	if walkErr != nil {
+		return http.StatusNotFound, errors.New("not exists")
 	}
 	ctx := r.Context()
 	if (walkErr != nil || fi == model.ListModel{}) && reqPath != "" && reqPath != "/" && strings.Index(reqPath, "test.png") == -1 {
