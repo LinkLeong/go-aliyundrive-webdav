@@ -136,7 +136,7 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 				return ""
 			}
 		}
-		go UploadFile(uploadUrl[i].Str, token, dataByte)
+		UploadFile(uploadUrl[i].Str, token, dataByte)
 		fmt.Println("multithread upload, thread #", i)
 
 	}
