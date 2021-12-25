@@ -16,6 +16,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 //处理内容
@@ -77,16 +79,22 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 			}
 			offset = int64(f % uint64(r.ContentLength))
 			end := math.Min(float64(offset+8), float64(r.ContentLength))
-			//先读取到offset end位置的所有字节，由于上面已经读取1024，这里剪掉
-			offsetBytes := make([]byte, int64(end-1024))
-			_, err2 := io.ReadFull(r.Body, offsetBytes)
-			if err2 != nil {
-				fmt.Println(err2)
-				return ""
+			var offsetBytes []byte
+			if end < 1024 {
+				offsetBytes = readbytes[offset:int64(end)]
+				proof = utils.GetProof(offsetBytes)
+			} else {
+				//先读取到offset end位置的所有字节，由于上面已经读取1024，这里剪掉
+				offsetBytes = make([]byte, int64(end-1024))
+				_, err2 := io.ReadFull(r.Body, offsetBytes)
+				if err2 != nil {
+					fmt.Println(err2)
+					return ""
+				}
+				readbytes = append(readbytes, offsetBytes...)
+				offsetBytes = offsetBytes[offset-1024 : int64(end)-1024]
+				proof = utils.GetProof(offsetBytes)
 			}
-			readbytes = append(readbytes, offsetBytes...)
-			offsetBytes = offsetBytes[offset-1024 : int64(end)-1024]
-			proof = utils.GetProof(offsetBytes)
 			flashUpload = true
 		}
 		buff := make([]byte, r.ContentLength-int64(len(readbytes)))
@@ -111,6 +119,8 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	if len(uploadUrl) == 0 {
 		return ""
 	}
+	var wg sync.WaitGroup
+	var bg time.Time = time.Now()
 	for i := 0; i < int(count); i++ {
 		var dataByte []byte
 		if int(count) == 1 {
@@ -128,9 +138,13 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 				return ""
 			}
 		}
-		UploadFile(uploadUrl[i].Str, token, dataByte)
-	}
+		wg.Add(1)
+		go UploadFile(&wg, uploadUrl[i].Str, token, dataByte)
+		fmt.Println("multithread upload, thread #", i)
 
+	}
+	wg.Wait()
+	fmt.Println("uploading done, elapsed ", time.Now().Sub(bg).String())
 	UploadFileComplete(token, driveId, uploadId, uploadFileId, parentId)
 	cache.GoCache.Delete(parentId)
 	return uploadFileId

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/tidwall/gjson"
 )
@@ -424,7 +425,8 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 
 	//return false
 }
-func UploadFile(url string, token string, data []byte) {
+func UploadFile(wg *sync.WaitGroup, url string, token string, data []byte) {
+	defer wg.Done()
 	net.Put(url, token, data)
 }
 func UploadFileComplete(token string, driveId string, uploadId string, fileId string, parentId string) bool {
