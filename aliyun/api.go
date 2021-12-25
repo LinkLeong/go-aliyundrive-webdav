@@ -427,7 +427,8 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 }
 func UploadFile(wg *sync.WaitGroup, url string, token string, data []byte) {
 	defer wg.Done()
-	net.Put(url, token, data)
+	rs := net.Put(url, token, data)
+	fmt.Println(rs)
 }
 func UploadFileComplete(token string, driveId string, uploadId string, fileId string, parentId string) bool {
 	//	private String drive_id;
