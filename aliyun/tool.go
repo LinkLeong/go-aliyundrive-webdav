@@ -49,9 +49,9 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	var uploadUrl []gjson.Result
 	var uploadId string
 	var uploadFileId string
-	//大于20M小于1G的才开启闪传，文件太大会导致内存溢出
+	//大于150K小于1G的才开启闪传，文件太大会导致内存溢出
 	//由于webdav协议的局限性，无法预先计算文件校验hash
-	if r.ContentLength > 1024*1024*20 && r.ContentLength <= 1024*1024*1024 {
+	if r.ContentLength > 1024*150 && r.ContentLength <= 1024*1024*1024 {
 		preHashDataBytes := make([]byte, 1024)
 		_, err := io.ReadFull(r.Body, preHashDataBytes)
 		if err != nil {
