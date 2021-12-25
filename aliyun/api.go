@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tidwall/gjson"
 	"go-aliyun-webdav/aliyun/cache"
 	"go-aliyun-webdav/aliyun/model"
 	"go-aliyun-webdav/aliyun/net"
@@ -11,9 +12,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
-
-	"github.com/tidwall/gjson"
 )
 
 func GetList(token string, driveId string, parentFileId string, marker ...string) (model.FileListModel, error) {
@@ -425,8 +423,7 @@ func UpdateFileFile(token string, driveId string, fileName string, parentFileId 
 
 	//return false
 }
-func UploadFile(wg *sync.WaitGroup, url string, token string, data []byte) {
-	defer wg.Done()
+func UploadFile(url string, token string, data []byte) {
 	rs := net.Put(url, token, data)
 	fmt.Println(string(rs))
 }

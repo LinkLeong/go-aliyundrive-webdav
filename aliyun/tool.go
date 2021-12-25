@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -119,7 +118,6 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 	if len(uploadUrl) == 0 {
 		return ""
 	}
-	var wg sync.WaitGroup
 	var bg time.Time = time.Now()
 	for i := 0; i < int(count); i++ {
 		var dataByte []byte
@@ -138,12 +136,10 @@ func ContentHandle(r *http.Request, token string, driveId string, parentId strin
 				return ""
 			}
 		}
-		wg.Add(1)
-		go UploadFile(&wg, uploadUrl[i].Str, token, dataByte)
+		go UploadFile(uploadUrl[i].Str, token, dataByte)
 		fmt.Println("multithread upload, thread #", i)
 
 	}
-	wg.Wait()
 	fmt.Println("uploading done, elapsed ", time.Now().Sub(bg).String())
 	UploadFileComplete(token, driveId, uploadId, uploadFileId, parentId)
 	cache.GoCache.Delete(parentId)
