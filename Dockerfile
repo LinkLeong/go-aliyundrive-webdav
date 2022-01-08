@@ -11,7 +11,7 @@ FROM alpine:latest
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && cat /etc/apk/repositories
 WORKDIR /data
 RUN apk add --no-cache tzdata curl
-COPY --from=builder /build/app /usr/bin/go-aliyundriver-webdav
-RUN chmod +x /usr/bin/go-aliyundriver-webdav
+COPY --from=builder /build/app /usr/bin/go-aliyundrive-webdav
+RUN chmod +x /usr/bin/go-aliyundrive-webdav
 VOLUME /data
 ENTRYPOINT ["/usr/bin/go-aliyundrive-webdav"]
