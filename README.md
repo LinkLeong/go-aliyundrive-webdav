@@ -84,4 +84,7 @@ echo "your refreshToken" > /path/to/save/refreshToken
 6. 严禁使用本软件进行盈利、损坏官方、散落任何违法信息等行为。
 7. 本软件不作任何稳定性的承诺，如因使用本软件导致的文件丢失、文件破坏等意外情况，均与本软件无关。
 
+---
+
+[![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
 
